@@ -1,6 +1,8 @@
 package com.ga.medibook.service;
 
+import com.ga.medibook.dto.request.LoginRequest;
 import com.ga.medibook.dto.request.RegisterRequest;
+import com.ga.medibook.dto.response.LoginResponse;
 import com.ga.medibook.dto.response.UserResponse;
 import com.ga.medibook.model.entity.User;
 import com.ga.medibook.model.entity.UserProfile;
@@ -8,7 +10,13 @@ import com.ga.medibook.model.enums.UserRole;
 import com.ga.medibook.model.enums.UserStatus;
 import com.ga.medibook.repository.UserProfileRepository;
 import com.ga.medibook.repository.UserRepository;
+import com.ga.medibook.security.JWTUtils;
+import com.ga.medibook.security.MyUserDetails;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +28,8 @@ public class AuthService {
     private final UserRepository userRepository;
     private final UserProfileRepository userProfileRepository;
     private final PasswordEncoder passwordEncoder;
+    private final AuthenticationManager authenticationManager;
+    private final JWTUtils jwtUtils;
 
     @Transactional
     public UserResponse register(RegisterRequest request) {
@@ -59,4 +69,28 @@ public class AuthService {
                 savedUser.isEmailVerified()
         );
     }
+
+    public LoginResponse login(LoginRequest request) {
+
+        Authentication authentication =
+                authenticationManager.authenticate(
+                        new UsernamePasswordAuthenticationToken(
+                                request.getEmail(),
+                                request.getPassword()
+                        )
+                );
+
+        SecurityContextHolder
+                .getContext()
+                .setAuthentication(authentication);
+
+        MyUserDetails myUserDetails =
+                (MyUserDetails) authentication.getPrincipal();
+
+        String jwt = jwtUtils.generateJwtToken(myUserDetails);
+
+        return new LoginResponse(jwt);
+    }
+
+
 }

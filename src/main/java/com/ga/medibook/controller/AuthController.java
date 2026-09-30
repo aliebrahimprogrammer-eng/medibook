@@ -1,6 +1,8 @@
 package com.ga.medibook.controller;
 
+import com.ga.medibook.dto.request.LoginRequest;
 import com.ga.medibook.dto.request.RegisterRequest;
+import com.ga.medibook.dto.response.LoginResponse;
 import com.ga.medibook.dto.response.UserResponse;
 import com.ga.medibook.service.AuthService;
 import jakarta.validation.Valid;
@@ -26,5 +28,15 @@ public class AuthController {
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(response);
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<LoginResponse> login(
+            @Valid @RequestBody LoginRequest request
+    ) {
+
+        LoginResponse response = authService.login(request);
+
+        return ResponseEntity.ok(response);
     }
 }
