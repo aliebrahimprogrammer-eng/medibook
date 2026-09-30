@@ -4,10 +4,12 @@ import com.ga.medibook.dto.request.LoginRequest;
 import com.ga.medibook.dto.request.RegisterRequest;
 import com.ga.medibook.dto.response.LoginResponse;
 import com.ga.medibook.dto.response.UserResponse;
+import com.ga.medibook.model.entity.EmailVerificationToken;
 import com.ga.medibook.model.entity.User;
 import com.ga.medibook.model.entity.UserProfile;
 import com.ga.medibook.model.enums.UserRole;
 import com.ga.medibook.model.enums.UserStatus;
+import com.ga.medibook.repository.EmailVerificationTokenRepository;
 import com.ga.medibook.repository.UserProfileRepository;
 import com.ga.medibook.repository.UserRepository;
 import com.ga.medibook.security.JWTUtils;
@@ -21,6 +23,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.util.UUID;
+
 @Service
 @RequiredArgsConstructor
 public class AuthService {
@@ -30,6 +35,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JWTUtils jwtUtils;
+    private final EmailVerificationTokenRepository emailVerificationTokenRepository;
 
     @Transactional
     public UserResponse register(RegisterRequest request) {
@@ -51,6 +57,18 @@ public class AuthService {
         user.setEmailVerified(false);
 
         User savedUser = userRepository.save(user);
+
+        //create email verification token
+        EmailVerificationToken verificationToken =
+                new EmailVerificationToken();
+
+        verificationToken.setUser(savedUser);
+        verificationToken.setToken(UUID.randomUUID().toString());
+        verificationToken.setExpiresAt(
+                LocalDateTime.now().plusHours(24)
+        );
+
+        emailVerificationTokenRepository.save(verificationToken);
 
         UserProfile profile = new UserProfile();
 
@@ -90,6 +108,37 @@ public class AuthService {
         String jwt = jwtUtils.generateJwtToken(myUserDetails);
 
         return new LoginResponse(jwt);
+    }
+
+    @Transactional
+    public void verifyEmail(String token) {
+
+        EmailVerificationToken verificationToken =
+                emailVerificationTokenRepository
+                        .findByToken(token)
+                        .orElseThrow(() ->
+                                new IllegalArgumentException(
+                                        "Invalid verification token"
+                                )
+                        );
+
+        if (verificationToken.getExpiresAt()
+                .isBefore(LocalDateTime.now())) {
+
+            throw new IllegalArgumentException(
+                    "Verification token has expired"
+            );
+        }
+
+        User user = verificationToken.getUser();
+
+        user.setEmailVerified(true);
+
+        userRepository.save(user);
+
+        emailVerificationTokenRepository.delete(
+                verificationToken
+        );
     }
 
 

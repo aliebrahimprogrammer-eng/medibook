@@ -1,6 +1,7 @@
 package com.ga.medibook.security;
 
 import com.ga.medibook.model.entity.User;
+import com.ga.medibook.model.enums.UserStatus;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
@@ -52,7 +53,7 @@ public class MyUserDetails implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return user.getStatus() != null
-                && user.getStatus().name().equals("ACTIVE");
+        return user.getStatus() == UserStatus.ACTIVE
+                && user.isEmailVerified();
     }
 }
