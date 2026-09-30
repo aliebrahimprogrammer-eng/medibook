@@ -4,6 +4,7 @@ import com.ga.medibook.dto.request.LoginRequest;
 import com.ga.medibook.dto.request.RegisterRequest;
 import com.ga.medibook.dto.response.LoginResponse;
 import com.ga.medibook.dto.response.UserResponse;
+import com.ga.medibook.exception.ResourceConflictException;
 import com.ga.medibook.model.entity.EmailVerificationToken;
 import com.ga.medibook.model.entity.User;
 import com.ga.medibook.model.entity.UserProfile;
@@ -41,7 +42,7 @@ public class AuthService {
     public UserResponse register(RegisterRequest request) {
 
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new IllegalArgumentException(
+            throw new ResourceConflictException(
                     "Email is already registered"
             );
         }
