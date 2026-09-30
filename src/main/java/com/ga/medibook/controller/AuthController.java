@@ -1,7 +1,9 @@
 package com.ga.medibook.controller;
 
+import com.ga.medibook.dto.request.ForgotPasswordRequest;
 import com.ga.medibook.dto.request.LoginRequest;
 import com.ga.medibook.dto.request.RegisterRequest;
+import com.ga.medibook.dto.request.ResetPasswordRequest;
 import com.ga.medibook.dto.response.LoginResponse;
 import com.ga.medibook.dto.response.UserResponse;
 import com.ga.medibook.service.AuthService;
@@ -46,6 +48,26 @@ public class AuthController {
     ) {
 
         authService.verifyEmail(token);
+
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<Void> forgotPassword(
+            @Valid @RequestBody ForgotPasswordRequest request
+    ) {
+
+        authService.forgotPassword(request);
+
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<Void> resetPassword(
+            @Valid @RequestBody ResetPasswordRequest request
+    ) {
+
+        authService.resetPassword(request);
 
         return ResponseEntity.noContent().build();
     }

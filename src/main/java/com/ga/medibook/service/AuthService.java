@@ -1,16 +1,20 @@
 package com.ga.medibook.service;
 
+import com.ga.medibook.dto.request.ForgotPasswordRequest;
 import com.ga.medibook.dto.request.LoginRequest;
 import com.ga.medibook.dto.request.RegisterRequest;
+import com.ga.medibook.dto.request.ResetPasswordRequest;
 import com.ga.medibook.dto.response.LoginResponse;
 import com.ga.medibook.dto.response.UserResponse;
 import com.ga.medibook.exception.ResourceConflictException;
 import com.ga.medibook.model.entity.EmailVerificationToken;
+import com.ga.medibook.model.entity.PasswordResetToken;
 import com.ga.medibook.model.entity.User;
 import com.ga.medibook.model.entity.UserProfile;
 import com.ga.medibook.model.enums.UserRole;
 import com.ga.medibook.model.enums.UserStatus;
 import com.ga.medibook.repository.EmailVerificationTokenRepository;
+import com.ga.medibook.repository.PasswordResetTokenRepository;
 import com.ga.medibook.repository.UserProfileRepository;
 import com.ga.medibook.repository.UserRepository;
 import com.ga.medibook.security.JWTUtils;
@@ -37,6 +41,7 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final JWTUtils jwtUtils;
     private final EmailVerificationTokenRepository emailVerificationTokenRepository;
+    private final PasswordResetTokenRepository passwordResetTokenRepository;
 
     @Transactional
     public UserResponse register(RegisterRequest request) {
@@ -140,6 +145,60 @@ public class AuthService {
         emailVerificationTokenRepository.delete(
                 verificationToken
         );
+    }
+
+    @Transactional
+    public void forgotPassword(ForgotPasswordRequest request) {
+
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "No user found with this email"
+                        )
+                );
+
+        passwordResetTokenRepository.deleteByUserId(user.getId());
+
+        PasswordResetToken resetToken = new PasswordResetToken();
+
+        resetToken.setUser(user);
+        resetToken.setToken(UUID.randomUUID().toString());
+        resetToken.setExpiresAt(
+                LocalDateTime.now().plusMinutes(30)
+        );
+
+        passwordResetTokenRepository.save(resetToken);
+    }
+
+    @Transactional
+    public void resetPassword(ResetPasswordRequest request) {
+
+        PasswordResetToken resetToken =
+                passwordResetTokenRepository
+                        .findByToken(request.getToken())
+                        .orElseThrow(() ->
+                                new IllegalArgumentException(
+                                        "Invalid password reset token"
+                                )
+                        );
+
+        if (resetToken.getExpiresAt()
+                .isBefore(LocalDateTime.now())) {
+
+            throw new IllegalArgumentException(
+                    "Password reset token has expired"
+            );
+        }
+
+        User user = resetToken.getUser();
+
+        user.setPassword(
+                passwordEncoder.encode(request.getNewPassword())
+        );
+
+        userRepository.save(user);
+
+        passwordResetTokenRepository.delete(resetToken);
     }
 
 
