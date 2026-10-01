@@ -1,6 +1,7 @@
 package com.ga.medibook.service;
 
 import com.ga.medibook.dto.request.AppointmentRequest;
+import com.ga.medibook.dto.request.AppointmentStatusRequest;
 import com.ga.medibook.dto.response.AppointmentResponse;
 import com.ga.medibook.model.entity.Appointment;
 import com.ga.medibook.model.entity.Availability;
@@ -261,6 +262,88 @@ public class AppointmentService {
         appointment.setStatus(
                 AppointmentStatus.CANCELLED
         );
+
+        appointmentRepository.save(appointment);
+    }
+
+    @Transactional
+    public void updateStatus(
+            Long appointmentId,
+            String doctorEmail,
+            AppointmentStatusRequest request
+    ) {
+
+        User doctorUser = userRepository.findByEmail(doctorEmail)
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "Doctor not found"
+                        )
+                );
+
+        Doctor doctor = doctorRepository.findByUserId(
+                doctorUser.getId()
+        ).orElseThrow(() ->
+                new IllegalArgumentException(
+                        "Doctor profile not found"
+                )
+        );
+
+        Appointment appointment =
+                appointmentRepository.findById(appointmentId)
+                        .orElseThrow(() ->
+                                new IllegalArgumentException(
+                                        "Appointment not found"
+                                )
+                        );
+
+        // Make sure this doctor owns the appointment
+        if (!appointment.getDoctor()
+                .getId()
+                .equals(doctor.getId())) {
+
+            throw new IllegalArgumentException(
+                    "You can only manage your own appointments"
+            );
+        }
+
+        AppointmentStatus currentStatus =
+                appointment.getStatus();
+
+        AppointmentStatus newStatus =
+                request.getStatus();
+
+        // PENDING → CONFIRMED
+        if (currentStatus == AppointmentStatus.PENDING
+                && newStatus == AppointmentStatus.CONFIRMED) {
+
+            appointment.setStatus(newStatus);
+
+            // PENDING → CANCELLED
+        } else if (currentStatus == AppointmentStatus.PENDING
+                && newStatus == AppointmentStatus.CANCELLED) {
+
+            appointment.setStatus(newStatus);
+
+            // CONFIRMED → COMPLETED
+        } else if (currentStatus == AppointmentStatus.CONFIRMED
+                && newStatus == AppointmentStatus.COMPLETED) {
+
+            appointment.setStatus(newStatus);
+
+            // CONFIRMED → CANCELLED
+        } else if (currentStatus == AppointmentStatus.CONFIRMED
+                && newStatus == AppointmentStatus.CANCELLED) {
+
+            appointment.setStatus(newStatus);
+
+        } else {
+            throw new IllegalArgumentException(
+                    "Invalid appointment status transition from "
+                            + currentStatus
+                            + " to "
+                            + newStatus
+            );
+        }
 
         appointmentRepository.save(appointment);
     }

@@ -1,6 +1,7 @@
 package com.ga.medibook.controller;
 
 import com.ga.medibook.dto.request.AppointmentRequest;
+import com.ga.medibook.dto.request.AppointmentStatusRequest;
 import com.ga.medibook.dto.response.AppointmentResponse;
 import com.ga.medibook.service.AppointmentService;
 import jakarta.validation.Valid;
@@ -69,6 +70,22 @@ public class AppointmentController {
         appointmentService.cancelAppointment(
                 id,
                 authentication.getName()
+        );
+
+        return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<Void> updateStatus(
+            Authentication authentication,
+            @PathVariable Long id,
+            @Valid @RequestBody AppointmentStatusRequest request
+    ) {
+
+        appointmentService.updateStatus(
+                id,
+                authentication.getName(),
+                request
         );
 
         return ResponseEntity.noContent().build();
