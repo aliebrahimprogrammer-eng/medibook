@@ -8,6 +8,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,6 +21,7 @@ public class AppointmentController {
 
     private final AppointmentService appointmentService;
 
+    @PreAuthorize("hasRole('PATIENT')")
     @PostMapping
     public ResponseEntity<AppointmentResponse> create(
             Authentication authentication,
@@ -37,6 +39,7 @@ public class AppointmentController {
                 .body(response);
     }
 
+    @PreAuthorize("hasRole('PATIENT')")
     @GetMapping("/my")
     public ResponseEntity<List<AppointmentResponse>> myAppointments(
             Authentication authentication
@@ -49,6 +52,7 @@ public class AppointmentController {
         );
     }
 
+    @PreAuthorize("hasRole('DOCTOR')")
     @GetMapping("/doctor/my")
     public ResponseEntity<List<AppointmentResponse>> doctorAppointments(
             Authentication authentication
@@ -61,6 +65,7 @@ public class AppointmentController {
         );
     }
 
+    @PreAuthorize("hasRole('PATIENT')")
     @PatchMapping("/{id}/cancel")
     public ResponseEntity<Void> cancel(
             Authentication authentication,
@@ -75,6 +80,7 @@ public class AppointmentController {
         return ResponseEntity.noContent().build();
     }
 
+    @PreAuthorize("hasRole('DOCTOR')")
     @PatchMapping("/{id}/status")
     public ResponseEntity<Void> updateStatus(
             Authentication authentication,
