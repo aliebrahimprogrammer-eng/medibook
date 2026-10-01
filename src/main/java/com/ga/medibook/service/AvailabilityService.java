@@ -4,8 +4,10 @@ import com.ga.medibook.dto.request.AvailabilityRequest;
 import com.ga.medibook.dto.response.AvailabilityResponse;
 import com.ga.medibook.model.entity.Availability;
 import com.ga.medibook.model.entity.Doctor;
+import com.ga.medibook.model.entity.User;
 import com.ga.medibook.repository.AvailabilityRepository;
 import com.ga.medibook.repository.DoctorRepository;
+import com.ga.medibook.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,11 +21,13 @@ public class AvailabilityService {
 
     private final AvailabilityRepository availabilityRepository;
     private final DoctorRepository doctorRepository;
+    private final UserRepository userRepository;
 
     @Transactional
     public AvailabilityResponse create(
+            String doctorEmail,
             AvailabilityRequest request
-    ) {
+    ){
 
         if (!request.getEndDateTime()
                 .isAfter(request.getStartDateTime())) {
@@ -33,11 +37,18 @@ public class AvailabilityService {
             );
         }
 
-        Doctor doctor = doctorRepository.findById(
-                request.getDoctorId()
+        User doctorUser = userRepository.findByEmail(doctorEmail)
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "Doctor user not found"
+                        )
+                );
+
+        Doctor doctor = doctorRepository.findByUserId(
+                doctorUser.getId()
         ).orElseThrow(() ->
                 new IllegalArgumentException(
-                        "Doctor not found"
+                        "Doctor profile not found"
                 )
         );
 
@@ -97,7 +108,25 @@ public class AvailabilityService {
     }
 
     @Transactional
-    public void delete(Long id) {
+    public void delete(
+            Long id,
+            String doctorEmail
+    ) {
+
+        User doctorUser = userRepository.findByEmail(doctorEmail)
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "Doctor user not found"
+                        )
+                );
+
+        Doctor doctor = doctorRepository.findByUserId(
+                doctorUser.getId()
+        ).orElseThrow(() ->
+                new IllegalArgumentException(
+                        "Doctor profile not found"
+                )
+        );
 
         Availability availability =
                 availabilityRepository.findById(id)
@@ -106,6 +135,15 @@ public class AvailabilityService {
                                         "Availability not found"
                                 )
                         );
+
+        if (!availability.getDoctor()
+                .getId()
+                .equals(doctor.getId())) {
+
+            throw new IllegalArgumentException(
+                    "You can only delete your own availability"
+            );
+        }
 
         availabilityRepository.delete(availability);
     }
