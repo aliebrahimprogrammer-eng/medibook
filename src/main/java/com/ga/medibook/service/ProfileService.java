@@ -9,6 +9,7 @@ import com.ga.medibook.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 @RequiredArgsConstructor
@@ -16,6 +17,7 @@ public class ProfileService {
 
     private final UserRepository userRepository;
     private final UserProfileRepository userProfileRepository;
+    private final FileStorageService fileStorageService;
 
     @Transactional(readOnly = true)
     public ProfileResponse getMyProfile(
@@ -95,5 +97,38 @@ public class ProfileService {
                 profile.getPhone(),
                 profile.getProfilePictureUrl()
         );
+    }
+
+    @Transactional
+    public ProfileResponse uploadProfilePicture(
+            String email,
+            MultipartFile file
+    ) {
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "User not found"
+                        )
+                );
+
+        UserProfile profile =
+                userProfileRepository.findByUserId(
+                        user.getId()
+                ).orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "Profile not found"
+                        )
+                );
+
+        String filename =
+                fileStorageService.storeProfilePicture(file);
+
+        profile.setProfilePictureUrl(filename);
+
+        UserProfile saved =
+                userProfileRepository.save(profile);
+
+        return toResponse(user, saved);
     }
 }

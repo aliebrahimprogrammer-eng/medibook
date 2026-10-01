@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/profile")
@@ -38,6 +39,20 @@ public class ProfileController {
                 profileService.updateMyProfile(
                         authentication.getName(),
                         request
+                )
+        );
+    }
+
+    @PostMapping("/picture")
+    public ResponseEntity<ProfileResponse> uploadProfilePicture(
+            Authentication authentication,
+            @RequestParam("file") MultipartFile file
+    ) {
+
+        return ResponseEntity.ok(
+                profileService.uploadProfilePicture(
+                        authentication.getName(),
+                        file
                 )
         );
     }
