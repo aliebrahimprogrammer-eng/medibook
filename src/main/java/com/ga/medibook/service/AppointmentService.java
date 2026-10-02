@@ -384,4 +384,48 @@ public class AppointmentService {
                 appointment.getUpdatedAt()
         );
     }
+
+    @Transactional(readOnly = true)
+    public AppointmentResponse findById(
+            Long appointmentId,
+            String userEmail
+    ) {
+
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "User not found"
+                        )
+                );
+
+        Appointment appointment =
+                appointmentRepository.findById(appointmentId)
+                        .orElseThrow(() ->
+                                new IllegalArgumentException(
+                                        "Appointment not found"
+                                )
+                        );
+
+        boolean isPatient =
+                appointment.getPatient()
+                        .getId()
+                        .equals(user.getId());
+
+        boolean isDoctor =
+                appointment.getDoctor()
+                        .getUser()
+                        .getId()
+                        .equals(user.getId());
+
+        boolean isAdmin =
+                user.getRole() == UserRole.ADMIN;
+
+        if (!isPatient && !isDoctor && !isAdmin) {
+            throw new IllegalArgumentException(
+                    "You are not allowed to view this appointment"
+            );
+        }
+
+        return toResponse(appointment);
+    }
 }

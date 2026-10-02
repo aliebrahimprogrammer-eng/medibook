@@ -96,4 +96,18 @@ public class AppointmentController {
 
         return ResponseEntity.noContent().build();
     }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<AppointmentResponse> findById(
+            Authentication authentication,
+            @PathVariable Long id
+    ) {
+
+        return ResponseEntity.ok(
+                appointmentService.findById(
+                        id,
+                        authentication.getName()
+                )
+        );
+    }
 }
