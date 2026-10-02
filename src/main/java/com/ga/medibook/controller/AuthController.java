@@ -1,9 +1,6 @@
 package com.ga.medibook.controller;
 
-import com.ga.medibook.dto.request.ForgotPasswordRequest;
-import com.ga.medibook.dto.request.LoginRequest;
-import com.ga.medibook.dto.request.RegisterRequest;
-import com.ga.medibook.dto.request.ResetPasswordRequest;
+import com.ga.medibook.dto.request.*;
 import com.ga.medibook.dto.response.LoginResponse;
 import com.ga.medibook.dto.response.UserResponse;
 import com.ga.medibook.service.AuthService;
@@ -11,6 +8,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -68,6 +66,20 @@ public class AuthController {
     ) {
 
         authService.resetPassword(request);
+
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/change-password")
+    public ResponseEntity<Void> changePassword(
+            Authentication authentication,
+            @Valid @RequestBody ChangePasswordRequest request
+    ) {
+
+        authService.changePassword(
+                authentication.getName(),
+                request
+        );
 
         return ResponseEntity.noContent().build();
     }
