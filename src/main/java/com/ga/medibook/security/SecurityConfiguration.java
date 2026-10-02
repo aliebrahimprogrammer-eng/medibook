@@ -39,12 +39,20 @@ public class SecurityConfiguration {
 
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
-                                "/api/auth/**",
+                                "/api/auth/register",
+                                "/api/auth/login",
+                                "/api/auth/verify-email",
+                                "/api/auth/forgot-password",
+                                "/api/auth/reset-password",
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**"
                         )
                         .permitAll()
 
+                        .requestMatchers(
+                                "/api/auth/change-password"
+                        )
+                        .authenticated()
                         .anyRequest()
                         .authenticated()
                 );

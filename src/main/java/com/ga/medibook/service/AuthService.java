@@ -1,9 +1,6 @@
 package com.ga.medibook.service;
 
-import com.ga.medibook.dto.request.ForgotPasswordRequest;
-import com.ga.medibook.dto.request.LoginRequest;
-import com.ga.medibook.dto.request.RegisterRequest;
-import com.ga.medibook.dto.request.ResetPasswordRequest;
+import com.ga.medibook.dto.request.*;
 import com.ga.medibook.dto.response.LoginResponse;
 import com.ga.medibook.dto.response.UserResponse;
 import com.ga.medibook.exception.ResourceConflictException;
@@ -199,6 +196,48 @@ public class AuthService {
         userRepository.save(user);
 
         passwordResetTokenRepository.delete(resetToken);
+    }
+
+    @Transactional
+    public void changePassword(
+            String email,
+            ChangePasswordRequest request
+    ) {
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "User not found"
+                        )
+                );
+
+        if (!passwordEncoder.matches(
+                request.getCurrentPassword(),
+                user.getPassword()
+        )) {
+
+            throw new IllegalArgumentException(
+                    "Current password is incorrect"
+            );
+        }
+
+        if (passwordEncoder.matches(
+                request.getNewPassword(),
+                user.getPassword()
+        )) {
+
+            throw new IllegalArgumentException(
+                    "New password must be different from current password"
+            );
+        }
+
+        user.setPassword(
+                passwordEncoder.encode(
+                        request.getNewPassword()
+                )
+        );
+
+        userRepository.save(user);
     }
 
 
