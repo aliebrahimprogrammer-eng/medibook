@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,12 +23,16 @@ public class SpecializationController {
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
     public ResponseEntity<SpecializationResponse> create(
-            @Valid @RequestBody SpecializationRequest request
+            @Valid @RequestBody SpecializationRequest request,
+            Authentication authentication
     ) {
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
-                .body(specializationService.create(request));
+                .body(specializationService.create(
+                        request,
+                        authentication.getName()
+                ));
     }
 
     @GetMapping
