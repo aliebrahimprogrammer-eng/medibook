@@ -18,6 +18,7 @@ public class ProfileService {
     private final UserRepository userRepository;
     private final UserProfileRepository userProfileRepository;
     private final FileStorageService fileStorageService;
+    private final AuditLogService auditLogService;
 
     @Transactional(readOnly = true)
     public ProfileResponse getMyProfile(
@@ -80,6 +81,14 @@ public class ProfileService {
         UserProfile saved =
                 userProfileRepository.save(profile);
 
+        auditLogService.log(
+                user,
+                "UPDATE_PROFILE",
+                "USER_PROFILE",
+                profile.getId(),
+                "Profile id " + profile.getId() + " is updated by user id " +  user.getId()
+        );
+
         return toResponse(user, saved);
     }
 
@@ -128,6 +137,14 @@ public class ProfileService {
 
         UserProfile saved =
                 userProfileRepository.save(profile);
+
+        auditLogService.log(
+                user,
+                "UPLOAD_PROFILE_PICTURE",
+                "USER_PROFILE",
+                profile.getId(),
+                "Profile picture for user profile id " + profile.getId() + " is uploaded by user id " +  user.getId()
+        );
 
         return toResponse(user, saved);
     }
