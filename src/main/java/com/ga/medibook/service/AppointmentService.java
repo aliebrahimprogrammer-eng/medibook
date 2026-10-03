@@ -32,6 +32,7 @@ public class AppointmentService {
     private final DoctorRepository doctorRepository;
     private final UserRepository userRepository;
     private final UserProfileRepository userProfileRepository;
+    private final AuditLogService auditLogService;
 
     @Transactional
     public AppointmentResponse create(
@@ -161,6 +162,16 @@ public class AppointmentService {
         Appointment saved =
                 appointmentRepository.save(appointment);
 
+        //11- Add audit log for the created appointment
+        auditLogService.log(
+                patient,
+                "CREATE_APPOINTMENT",
+                "APPOINTMENT",
+                saved.getId(),
+                "Patient created an appointment with doctor ID "
+                        + doctor.getId()
+        );
+
         return toResponse(saved);
     }
 
@@ -264,6 +275,14 @@ public class AppointmentService {
         );
 
         appointmentRepository.save(appointment);
+
+        auditLogService.log(
+                patient,
+                "CANCEL_APPOINTMENT",
+                "APPOINTMENT",
+                appointment.getId(),
+                "Patient cancelled appointment"
+        );
     }
 
     @Transactional
@@ -346,6 +365,18 @@ public class AppointmentService {
         }
 
         appointmentRepository.save(appointment);
+
+        auditLogService.log(
+                doctorUser,
+                "UPDATE_APPOINTMENT_STATUS",
+                "APPOINTMENT",
+                appointment.getId(),
+                "Appointment status changed from "
+                        + currentStatus
+                        + " to "
+                        + newStatus
+        );
+
     }
 
     private AppointmentResponse toResponse(
