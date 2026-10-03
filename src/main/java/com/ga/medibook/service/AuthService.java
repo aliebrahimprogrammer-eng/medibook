@@ -39,6 +39,7 @@ public class AuthService {
     private final JWTUtils jwtUtils;
     private final EmailVerificationTokenRepository emailVerificationTokenRepository;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
+    private final AuditLogService auditLogService;
 
     @Transactional
     public UserResponse register(RegisterRequest request) {
@@ -81,6 +82,14 @@ public class AuthService {
         profile.setPhone(request.getPhone());
 
         userProfileRepository.save(profile);
+
+        auditLogService.log(
+                user,
+                "USER_REGISTERED",
+                "USER",
+                user.getId(),
+                "New user registered with the id " + user.getId()
+        );
 
         return new UserResponse(
                 savedUser.getId(),
@@ -142,6 +151,14 @@ public class AuthService {
         emailVerificationTokenRepository.delete(
                 verificationToken
         );
+
+        auditLogService.log(
+                user,
+                "USER_VERIFIED_EMAIL",
+                "USER",
+                user.getId(),
+                "Email verified for the user with the id " + user.getId()
+        );
     }
 
     @Transactional
@@ -165,6 +182,14 @@ public class AuthService {
         );
 
         passwordResetTokenRepository.save(resetToken);
+
+        auditLogService.log(
+                user,
+                "USER_FORGET_PASSWORD",
+                "USER",
+                user.getId(),
+                "The user with the id " + user.getId() + " forget password."
+        );
     }
 
     @Transactional
@@ -196,6 +221,14 @@ public class AuthService {
         userRepository.save(user);
 
         passwordResetTokenRepository.delete(resetToken);
+
+        auditLogService.log(
+                user,
+                "PASSWORD_RESET",
+                "USER",
+                user.getId(),
+                "The user with the id " + user.getId() + " rested password."
+        );
     }
 
     @Transactional
@@ -238,6 +271,14 @@ public class AuthService {
         );
 
         userRepository.save(user);
+
+        auditLogService.log(
+                user,
+                "PASSWORD_CHANGE",
+                "USER",
+                user.getId(),
+                "The user with the id " + user.getId() + " changed password."
+        );
     }
 
 

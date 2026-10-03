@@ -22,6 +22,7 @@ public class AvailabilityService {
     private final AvailabilityRepository availabilityRepository;
     private final DoctorRepository doctorRepository;
     private final UserRepository userRepository;
+    private final AuditLogService auditLogService;
 
     @Transactional
     public AvailabilityResponse create(
@@ -86,6 +87,14 @@ public class AvailabilityService {
         Availability saved =
                 availabilityRepository.save(availability);
 
+        auditLogService.log(
+                doctorUser,
+                "CREATE_AVAILABILITY",
+                "AVAILABILITY",
+                availability.getId(),
+                "A new availability id " + availability.getId() + " created for doctor id " + doctorUser.getId()
+        );
+
         return toResponse(saved);
     }
 
@@ -146,6 +155,14 @@ public class AvailabilityService {
         }
 
         availabilityRepository.delete(availability);
+
+        auditLogService.log(
+                doctorUser,
+                "DELETE_AVAILABILITY",
+                "AVAILABILITY",
+                availability.getId(),
+                "availability id " + availability.getId() + " deleted for doctor id " + doctorUser.getId()
+        );
     }
 
     private AvailabilityResponse toResponse(

@@ -16,6 +16,7 @@ import java.util.List;
 public class AdminUserService {
 
     private final UserRepository userRepository;
+    private final AuditLogService auditLogService;
 
     @Transactional
     public AdminUserResponse updateUserRole(
@@ -57,6 +58,14 @@ public class AdminUserService {
         user.setRole(newRole);
         userRepository.save(user);
 
+        auditLogService.log(
+                admin,
+                "USER_ROLE_UPDATED",
+                "USER",
+                user.getId(),
+                "User role changed from " + oldRole + " to " + newRole
+        );
+
         return new AdminUserResponse(
                 user.getId(),
                 user.getEmail(),
@@ -76,7 +85,17 @@ public class AdminUserService {
     }
 
     @Transactional
-    public void deactivateUser(Long userId) {
+    public void deactivateUser(
+            Long userId,
+            String adminEmail
+    ) {
+
+        User admin = userRepository.findByEmail(adminEmail)
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "Admin user not found"
+                        )
+                );
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() ->
@@ -94,10 +113,28 @@ public class AdminUserService {
         user.setStatus(UserStatus.INACTIVE);
 
         userRepository.save(user);
+
+        auditLogService.log(
+                admin,
+                "DEACTIVATE_USER",
+                "USER",
+                user.getId(),
+                "User account deactivated"
+        );
     }
 
     @Transactional
-    public void reactivateUser(Long userId) {
+    public void reactivateUser(
+            Long userId,
+            String adminEmail
+    ) {
+
+        User admin = userRepository.findByEmail(adminEmail)
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "Admin user not found"
+                        )
+                );
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() ->
@@ -115,6 +152,14 @@ public class AdminUserService {
         user.setStatus(UserStatus.ACTIVE);
 
         userRepository.save(user);
+
+        auditLogService.log(
+                admin,
+                "REACTIVATE_USER",
+                "USER",
+                user.getId(),
+                "User account reactivated"
+        );
     }
 
     private AdminUserResponse toResponse(User user) {

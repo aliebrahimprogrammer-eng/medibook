@@ -45,20 +45,28 @@ public class AdminUserController {
 
     @PatchMapping("/{id}/deactivate")
     public ResponseEntity<Void> deactivateUser(
+            Authentication authentication,
             @PathVariable Long id
-    ) {
+    ){
 
-        adminUserService.deactivateUser(id);
+        adminUserService.deactivateUser(
+                id,
+                authentication.getName()
+        );
 
         return ResponseEntity.noContent().build();
     }
 
     @PatchMapping("/{id}/reactivate")
     public ResponseEntity<Void> reactivateUser(
+            Authentication authentication,
             @PathVariable Long id
     ) {
 
-        adminUserService.reactivateUser(id);
+        adminUserService.reactivateUser(
+                id,
+                authentication.getName()
+        );
 
         return ResponseEntity.noContent().build();
     }

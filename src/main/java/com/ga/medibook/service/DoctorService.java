@@ -7,10 +7,7 @@ import com.ga.medibook.model.entity.Specialization;
 import com.ga.medibook.model.entity.User;
 import com.ga.medibook.model.entity.UserProfile;
 import com.ga.medibook.model.enums.UserRole;
-import com.ga.medibook.repository.DoctorRepository;
-import com.ga.medibook.repository.SpecializationRepository;
-import com.ga.medibook.repository.UserProfileRepository;
-import com.ga.medibook.repository.UserRepository;
+import com.ga.medibook.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,9 +20,16 @@ public class DoctorService {
     private final UserRepository userRepository;
     private final UserProfileRepository userProfileRepository;
     private final SpecializationRepository specializationRepository;
+    private final AuditLogService auditLogService;
 
     @Transactional
-    public DoctorResponse create(DoctorRequest request) {
+    public DoctorResponse create(
+            DoctorRequest request,
+            String adminEmail
+    ) {
+
+        User admin = userRepository.findByEmail(adminEmail)
+                .orElseThrow(() -> new IllegalArgumentException("Admin user not found"));
 
         User user = userRepository.findById(request.getUserId())
                 .orElseThrow(() ->
@@ -71,6 +75,14 @@ public class DoctorService {
         doctor.setBio(request.getBio());
 
         Doctor savedDoctor = doctorRepository.save(doctor);
+
+        auditLogService.log(
+                admin,
+                "CREATE_DOCTOR",
+                "DOCTOR",
+                doctor.getId(),
+                "A new doctor id " + doctor.getId() + " created by admin id " +  admin.getId()
+        );
 
         return toResponse(savedDoctor);
     }
