@@ -58,6 +58,14 @@ public class AdminUserService {
         user.setRole(newRole);
         userRepository.save(user);
 
+        auditLogService.log(
+                admin,
+                "USER_ROLE_UPDATED",
+                "USER",
+                user.getId(),
+                "User role changed from " + oldRole + " to " + newRole
+        );
+
         return new AdminUserResponse(
                 user.getId(),
                 user.getEmail(),
