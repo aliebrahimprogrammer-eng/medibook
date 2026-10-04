@@ -200,6 +200,23 @@ public class AuthService {
 
         passwordResetTokenRepository.save(resetToken);
 
+        String resetLink =
+                "http://localhost:8080/api/auth/reset-password?token="
+                        + resetToken.getToken();
+
+        emailService.sendEmail(
+                user.getEmail(),
+                "MediBook Password Reset",
+                "We received a request to reset your MediBook password.\n\n"
+                        + "Use the following token to reset your password:\n\n"
+                        + resetToken.getToken()
+                        + "\n\n"
+                        + "Reset link:\n"
+                        + resetLink
+                        + "\n\n"
+                        + "This reset token expires in 30 minutes."
+        );
+
         auditLogService.log(
                 user,
                 "USER_FORGET_PASSWORD",
