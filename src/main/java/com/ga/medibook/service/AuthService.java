@@ -10,6 +10,7 @@ import com.ga.medibook.model.entity.User;
 import com.ga.medibook.model.entity.UserProfile;
 import com.ga.medibook.model.enums.UserRole;
 import com.ga.medibook.model.enums.UserStatus;
+import com.ga.medibook.notification.EmailService;
 import com.ga.medibook.repository.EmailVerificationTokenRepository;
 import com.ga.medibook.repository.PasswordResetTokenRepository;
 import com.ga.medibook.repository.UserProfileRepository;
@@ -40,6 +41,7 @@ public class AuthService {
     private final EmailVerificationTokenRepository emailVerificationTokenRepository;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final AuditLogService auditLogService;
+    private final EmailService emailService;
 
     @Transactional
     public UserResponse register(RegisterRequest request) {
@@ -73,6 +75,21 @@ public class AuthService {
         );
 
         emailVerificationTokenRepository.save(verificationToken);
+
+        String verificationLink =
+                "http://localhost:8080/api/auth/verify-email?token="
+                        + verificationToken.getToken();
+
+        emailService.sendEmail(
+                user.getEmail(),
+                "Verify your MediBook account",
+                "Welcome to MediBook!\n\n"
+                        + "Please verify your email address by opening "
+                        + "the following link:\n\n"
+                        + verificationLink
+                        + "\n\n"
+                        + "This verification link expires in 24 hours."
+        );
 
         UserProfile profile = new UserProfile();
 
