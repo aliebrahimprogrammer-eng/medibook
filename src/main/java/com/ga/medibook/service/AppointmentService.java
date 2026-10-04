@@ -11,6 +11,7 @@ import com.ga.medibook.model.entity.UserProfile;
 import com.ga.medibook.model.enums.AppointmentStatus;
 import com.ga.medibook.model.enums.UserRole;
 import com.ga.medibook.model.enums.UserStatus;
+import com.ga.medibook.notification.EmailService;
 import com.ga.medibook.repository.AppointmentRepository;
 import com.ga.medibook.repository.AvailabilityRepository;
 import com.ga.medibook.repository.DoctorRepository;
@@ -33,6 +34,7 @@ public class AppointmentService {
     private final UserRepository userRepository;
     private final UserProfileRepository userProfileRepository;
     private final AuditLogService auditLogService;
+    private final EmailService emailService;
 
     @Transactional
     public AppointmentResponse create(
@@ -170,6 +172,17 @@ public class AppointmentService {
                 saved.getId(),
                 "Patient created an appointment with doctor ID "
                         + doctor.getId()
+        );
+
+        //12- Send Notification by email
+        emailService.sendEmail(
+                patient.getEmail(),
+                "MediBook Appointment Request",
+                "Your appointment request has been created.\n\n"
+                        + "Doctor ID: " + doctor.getId() + "\n"
+                        + "Start: " + request.getStartDateTime() + "\n"
+                        + "End: " + request.getEndDateTime() + "\n"
+                        + "Status: PENDING"
         );
 
         return toResponse(saved);
