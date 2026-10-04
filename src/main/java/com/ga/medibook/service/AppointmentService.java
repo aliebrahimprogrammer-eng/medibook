@@ -265,7 +265,7 @@ public class AppointmentService {
             );
         }
 
-        // Don't cancel something already cancelled
+        // Don't cancel something already canceled
         if (appointment.getStatus() ==
                 AppointmentStatus.CANCELLED) {
 
@@ -295,6 +295,12 @@ public class AppointmentService {
                 "APPOINTMENT",
                 appointment.getId(),
                 "Patient cancelled appointment"
+        );
+
+        emailService.sendEmail(
+                patient.getEmail(),
+                "MediBook Appointment Cancelled",
+                "Your appointment has been cancelled."
         );
     }
 
@@ -389,6 +395,38 @@ public class AppointmentService {
                         + " to "
                         + newStatus
         );
+
+        if(newStatus == AppointmentStatus.CONFIRMED) {
+            emailService.sendEmail(
+                    appointment.getPatient().getEmail(),
+                    "MediBook Appointment confirmed",
+                    "Your appointment has been confirmed.\n\n"
+                            + "Doctor ID: " + doctor.getId() + "\n"
+                            + "Start: " + appointment.getStartDateTime() + "\n"
+                            + "End: " + appointment.getEndDateTime() + "\n"
+                            + "Status: CONFIRMED"
+            );
+        } else if (newStatus == AppointmentStatus.COMPLETED){
+            emailService.sendEmail(
+                    appointment.getPatient().getEmail(),
+                    "MediBook Appointment completed",
+                    "Your appointment has been completed.\n\n"
+                            + "Doctor ID: " + doctor.getId() + "\n"
+                            + "Start: " + appointment.getStartDateTime() + "\n"
+                            + "End: " + appointment.getEndDateTime() + "\n"
+                            + "Status: COMPLETED"
+            );
+        } else if (newStatus == AppointmentStatus.CANCELLED){
+            emailService.sendEmail(
+                    appointment.getPatient().getEmail(),
+                    "MediBook Appointment Cancelled",
+                    "Your appointment has been cancelled."
+            );
+        }
+
+
+
+
 
     }
 
