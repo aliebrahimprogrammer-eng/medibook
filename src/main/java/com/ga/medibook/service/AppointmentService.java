@@ -11,6 +11,7 @@ import com.ga.medibook.model.entity.UserProfile;
 import com.ga.medibook.model.enums.AppointmentStatus;
 import com.ga.medibook.model.enums.UserRole;
 import com.ga.medibook.model.enums.UserStatus;
+import com.ga.medibook.notification.EmailService;
 import com.ga.medibook.repository.AppointmentRepository;
 import com.ga.medibook.repository.AvailabilityRepository;
 import com.ga.medibook.repository.DoctorRepository;
@@ -33,6 +34,7 @@ public class AppointmentService {
     private final UserRepository userRepository;
     private final UserProfileRepository userProfileRepository;
     private final AuditLogService auditLogService;
+    private final EmailService emailService;
 
     @Transactional
     public AppointmentResponse create(
@@ -172,6 +174,17 @@ public class AppointmentService {
                         + doctor.getId()
         );
 
+        //12- Send Notification by email
+        emailService.sendEmail(
+                patient.getEmail(),
+                "MediBook Appointment Request",
+                "Your appointment request has been created.\n\n"
+                        + "Doctor ID: " + doctor.getId() + "\n"
+                        + "Start: " + request.getStartDateTime() + "\n"
+                        + "End: " + request.getEndDateTime() + "\n"
+                        + "Status: PENDING"
+        );
+
         return toResponse(saved);
     }
 
@@ -252,7 +265,7 @@ public class AppointmentService {
             );
         }
 
-        // Don't cancel something already cancelled
+        // Don't cancel something already canceled
         if (appointment.getStatus() ==
                 AppointmentStatus.CANCELLED) {
 
@@ -282,6 +295,12 @@ public class AppointmentService {
                 "APPOINTMENT",
                 appointment.getId(),
                 "Patient cancelled appointment"
+        );
+
+        emailService.sendEmail(
+                patient.getEmail(),
+                "MediBook Appointment Cancelled",
+                "Your appointment has been cancelled."
         );
     }
 
@@ -376,6 +395,38 @@ public class AppointmentService {
                         + " to "
                         + newStatus
         );
+
+        if(newStatus == AppointmentStatus.CONFIRMED) {
+            emailService.sendEmail(
+                    appointment.getPatient().getEmail(),
+                    "MediBook Appointment confirmed",
+                    "Your appointment has been confirmed.\n\n"
+                            + "Doctor ID: " + doctor.getId() + "\n"
+                            + "Start: " + appointment.getStartDateTime() + "\n"
+                            + "End: " + appointment.getEndDateTime() + "\n"
+                            + "Status: CONFIRMED"
+            );
+        } else if (newStatus == AppointmentStatus.COMPLETED){
+            emailService.sendEmail(
+                    appointment.getPatient().getEmail(),
+                    "MediBook Appointment completed",
+                    "Your appointment has been completed.\n\n"
+                            + "Doctor ID: " + doctor.getId() + "\n"
+                            + "Start: " + appointment.getStartDateTime() + "\n"
+                            + "End: " + appointment.getEndDateTime() + "\n"
+                            + "Status: COMPLETED"
+            );
+        } else if (newStatus == AppointmentStatus.CANCELLED){
+            emailService.sendEmail(
+                    appointment.getPatient().getEmail(),
+                    "MediBook Appointment Cancelled",
+                    "Your appointment has been cancelled."
+            );
+        }
+
+
+
+
 
     }
 
