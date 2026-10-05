@@ -13,6 +13,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RequestParam;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 @RestController
 @RequestMapping("/api/audit-logs")
@@ -21,6 +23,10 @@ public class AuditLogController {
 
     private final AuditLogService auditLogService;
 
+    @Operation(
+            summary = "Get audit logs",
+            description = "Retrieves a paginated list of audit logs with optional search filtering"
+    )
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping
     public ResponseEntity<Page<AuditLogResponse>> findAll(
