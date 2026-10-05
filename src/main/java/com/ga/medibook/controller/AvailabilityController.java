@@ -10,6 +10,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 
 import java.util.List;
 
@@ -38,12 +42,21 @@ public class AvailabilityController {
     }
 
     @GetMapping("/doctor/{doctorId}")
-    public ResponseEntity<List<AvailabilityResponse>> findByDoctor(
-            @PathVariable Long doctorId
+    public ResponseEntity<Page<AvailabilityResponse>> findByDoctor(
+            @PathVariable Long doctorId,
+            @PageableDefault(
+                    size = 10,
+                    sort = "startDateTime",
+                    direction = Sort.Direction.ASC
+            )
+            Pageable pageable
     ) {
 
         return ResponseEntity.ok(
-                availabilityService.findByDoctor(doctorId)
+                availabilityService.findByDoctor(
+                        doctorId,
+                        pageable
+                )
         );
     }
 
