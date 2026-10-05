@@ -11,6 +11,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/doctors")
 @RequiredArgsConstructor
@@ -40,6 +42,19 @@ public class DoctorController {
 
         return ResponseEntity.ok(
                 doctorService.findById(id)
+        );
+    }
+
+    @GetMapping
+    public ResponseEntity<List<DoctorResponse>> searchDoctors(
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) String specialization
+    ) {
+        System.out.println(">>> CONTROLLER REACHED");
+        System.out.println(">>> name = " + name);
+        System.out.println(">>> specialization = " + specialization);
+        return ResponseEntity.ok(
+                doctorService.searchDoctors(name, specialization)
         );
     }
 }
