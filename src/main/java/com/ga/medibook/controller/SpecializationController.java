@@ -10,6 +10,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 import java.util.List;
 
@@ -20,6 +22,10 @@ public class SpecializationController {
 
     private final SpecializationService specializationService;
 
+    @Operation(
+            summary = "Create specialization",
+            description = "Creates a new medical specialization"
+    )
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
     public ResponseEntity<SpecializationResponse> create(
@@ -35,6 +41,10 @@ public class SpecializationController {
                 ));
     }
 
+    @Operation(
+            summary = "Get all specializations",
+            description = "Retrieves a list of all medical specializations"
+    )
     @GetMapping
     public ResponseEntity<List<SpecializationResponse>> findAll() {
 
@@ -43,6 +53,10 @@ public class SpecializationController {
         );
     }
 
+    @Operation(
+            summary = "Get specialization by ID",
+            description = "Retrieves a medical specialization by its ID"
+    )
     @GetMapping("/{id}")
     public ResponseEntity<SpecializationResponse> findById(
             @PathVariable Long id
