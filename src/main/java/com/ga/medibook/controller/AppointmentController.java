@@ -15,6 +15,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.data.domain.Sort;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 import java.util.List;
 
@@ -25,6 +27,10 @@ public class AppointmentController {
 
     private final AppointmentService appointmentService;
 
+    @Operation(
+            summary = "Create appointment",
+            description = "Creates a new appointment for the authenticated patient"
+    )
     @PreAuthorize("hasRole('PATIENT')")
     @PostMapping
     public ResponseEntity<AppointmentResponse> create(
@@ -43,6 +49,10 @@ public class AppointmentController {
                 .body(response);
     }
 
+    @Operation(
+            summary = "Get my appointments",
+            description = "Retrieves a paginated list of appointments for the authenticated patient"
+    )
     @PreAuthorize("hasRole('PATIENT')")
     @GetMapping("/my")
     public ResponseEntity<Page<AppointmentResponse>> myAppointments(
@@ -63,6 +73,10 @@ public class AppointmentController {
         );
     }
 
+    @Operation(
+            summary = "Get doctor appointments",
+            description = "Retrieves a paginated list of appointments for the authenticated doctor"
+    )
     @PreAuthorize("hasRole('DOCTOR')")
     @GetMapping("/doctor/my")
     public ResponseEntity<Page<AppointmentResponse>> doctorAppointments(
@@ -83,6 +97,10 @@ public class AppointmentController {
         );
     }
 
+    @Operation(
+            summary = "Cancel appointment",
+            description = "Cancels an appointment belonging to the authenticated patient"
+    )
     @PreAuthorize("hasRole('PATIENT')")
     @PatchMapping("/{id}/cancel")
     public ResponseEntity<Void> cancel(
@@ -98,6 +116,10 @@ public class AppointmentController {
         return ResponseEntity.noContent().build();
     }
 
+    @Operation(
+            summary = "Update appointment status",
+            description = "Updates the status of an appointment for the authenticated doctor"
+    )
     @PreAuthorize("hasRole('DOCTOR')")
     @PatchMapping("/{id}/status")
     public ResponseEntity<Void> updateStatus(
@@ -115,6 +137,10 @@ public class AppointmentController {
         return ResponseEntity.noContent().build();
     }
 
+    @Operation(
+            summary = "Get appointment by ID",
+            description = "Retrieves an appointment by its ID for an authorized user"
+    )
     @GetMapping("/{id}")
     public ResponseEntity<AppointmentResponse> findById(
             Authentication authentication,
