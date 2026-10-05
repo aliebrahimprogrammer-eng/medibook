@@ -12,6 +12,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 public class DoctorService {
@@ -127,4 +129,44 @@ public class DoctorService {
                 doctor.getBio()
         );
     }
+
+    @Transactional(readOnly = true)
+    public List<DoctorResponse> searchDoctors(
+            String name,
+            String specialization
+    ) {
+
+        List<Doctor> doctors;
+
+        boolean hasName = name != null && !name.isBlank();
+        boolean hasSpecialization =
+                specialization != null && !specialization.isBlank();
+
+        if (hasName && hasSpecialization) {
+
+            doctors = doctorRepository.searchByNameAndSpecialization(
+                    name,
+                    specialization
+            );
+
+        } else if (hasName) {
+
+            doctors = doctorRepository.searchByName(name);
+
+        } else if (hasSpecialization) {
+
+            doctors = doctorRepository.searchBySpecialization(
+                    specialization
+            );
+
+        } else {
+
+            doctors = doctorRepository.findAll();
+        }
+
+        return doctors.stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
 }
