@@ -9,6 +9,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 @RestController
 @RequestMapping("/api/profile")
@@ -17,6 +19,10 @@ public class ProfileController {
 
     private final ProfileService profileService;
 
+    @Operation(
+            summary = "Get my profile",
+            description = "Retrieves the profile of the authenticated user"
+    )
     @GetMapping
     public ResponseEntity<ProfileResponse> getMyProfile(
             Authentication authentication
@@ -29,6 +35,10 @@ public class ProfileController {
         );
     }
 
+    @Operation(
+            summary = "Update my profile",
+            description = "Updates the profile information of the authenticated user"
+    )
     @PutMapping
     public ResponseEntity<ProfileResponse> updateMyProfile(
             Authentication authentication,
@@ -43,6 +53,10 @@ public class ProfileController {
         );
     }
 
+    @Operation(
+            summary = "Upload profile picture",
+            description = "Uploads or replaces the profile picture of the authenticated user"
+    )
     @PostMapping("/picture")
     public ResponseEntity<ProfileResponse> uploadProfilePicture(
             Authentication authentication,
