@@ -26,6 +26,7 @@ import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -271,6 +272,13 @@ public class AppointmentService {
                                 )
                         );
 
+        Doctor doctor = doctorRepository.findById(appointment.getDoctor().getId())
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "Doctor not found"
+                        )
+                );
+
         // Ownership check
         if (!appointment.getPatient()
                 .getId()
@@ -317,6 +325,18 @@ public class AppointmentService {
                 patient.getEmail(),
                 "MediBook Appointment Cancelled",
                 "Your appointment has been cancelled."
+        );
+
+        sseNotificationService.sendNotification(
+                patient.getEmail(),
+                "Appointment #" + appointment.getId()
+                        + " was cancelled."
+        );
+
+        sseNotificationService.sendNotification(
+                doctor.getUser().getEmail(),
+                "A new appointment #" + appointment.getId()
+                        + " has been cancelled."
         );
     }
 
