@@ -10,6 +10,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 
 import java.util.List;
 
@@ -46,15 +49,17 @@ public class DoctorController {
     }
 
     @GetMapping
-    public ResponseEntity<List<DoctorResponse>> searchDoctors(
+    public ResponseEntity<Page<DoctorResponse>> searchDoctors(
             @RequestParam(required = false) String name,
-            @RequestParam(required = false) String specialization
+            @RequestParam(required = false) String specialization,
+            @PageableDefault(size = 10, sort = "id") Pageable pageable
     ) {
-        System.out.println(">>> CONTROLLER REACHED");
-        System.out.println(">>> name = " + name);
-        System.out.println(">>> specialization = " + specialization);
         return ResponseEntity.ok(
-                doctorService.searchDoctors(name, specialization)
+                doctorService.searchDoctors(
+                        name,
+                        specialization,
+                        pageable
+                )
         );
     }
 }

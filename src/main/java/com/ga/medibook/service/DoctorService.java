@@ -11,6 +11,8 @@ import com.ga.medibook.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 
@@ -131,12 +133,13 @@ public class DoctorService {
     }
 
     @Transactional(readOnly = true)
-    public List<DoctorResponse> searchDoctors(
+    public Page<DoctorResponse> searchDoctors(
             String name,
-            String specialization
+            String specialization,
+            Pageable pageable
     ) {
 
-        List<Doctor> doctors;
+        Page<Doctor> doctors;
 
         boolean hasName = name != null && !name.isBlank();
         boolean hasSpecialization =
@@ -146,27 +149,30 @@ public class DoctorService {
 
             doctors = doctorRepository.searchByNameAndSpecialization(
                     name,
-                    specialization
+                    specialization,
+                    pageable
             );
 
         } else if (hasName) {
 
-            doctors = doctorRepository.searchByName(name);
+            doctors = doctorRepository.searchByName(
+                    name,
+                    pageable
+            );
 
         } else if (hasSpecialization) {
 
             doctors = doctorRepository.searchBySpecialization(
-                    specialization
+                    specialization,
+                    pageable
             );
 
         } else {
 
-            doctors = doctorRepository.findAll();
+            doctors = doctorRepository.findAll(pageable);
         }
 
-        return doctors.stream()
-                .map(this::toResponse)
-                .toList();
+        return doctors.map(this::toResponse);
     }
 
 }
