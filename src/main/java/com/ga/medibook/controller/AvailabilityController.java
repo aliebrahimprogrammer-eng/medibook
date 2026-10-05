@@ -14,9 +14,15 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 import java.util.List;
 
+@Tag(
+        name = "Availability",
+        description = "Doctor availability management"
+)
 @RestController
 @RequestMapping("/api/availabilities")
 @RequiredArgsConstructor
@@ -24,6 +30,10 @@ public class AvailabilityController {
 
     private final AvailabilityService availabilityService;
 
+    @Operation(
+            summary = "Create availability",
+            description = "Creates a new availability slot for the authenticated doctor"
+    )
     @PreAuthorize("hasRole('DOCTOR')")
     @PostMapping
     public ResponseEntity<AvailabilityResponse> create(
@@ -41,6 +51,10 @@ public class AvailabilityController {
                 );
     }
 
+    @Operation(
+            summary = "Get doctor availability",
+            description = "Retrieves a paginated list of availability slots for a doctor"
+    )
     @GetMapping("/doctor/{doctorId}")
     public ResponseEntity<Page<AvailabilityResponse>> findByDoctor(
             @PathVariable Long doctorId,
@@ -60,6 +74,10 @@ public class AvailabilityController {
         );
     }
 
+    @Operation(
+            summary = "Delete availability",
+            description = "Deletes an availability slot belonging to the authenticated doctor"
+    )
     @PreAuthorize("hasRole('DOCTOR')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(
