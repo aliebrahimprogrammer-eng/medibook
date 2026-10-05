@@ -20,6 +20,10 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 
 import java.util.List;
 
+@Tag(
+        name = "Appointments",
+        description = "Patient and doctor appointment operations"
+)
 @RestController
 @RequestMapping("/api/appointments")
 @RequiredArgsConstructor

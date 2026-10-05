@@ -16,6 +16,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
+@Tag(
+        name = "Admin - Audit Logs",
+        description = "Administrative audit log search and review"
+)
 @RestController
 @RequestMapping("/api/audit-logs")
 @RequiredArgsConstructor

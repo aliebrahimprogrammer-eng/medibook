@@ -15,6 +15,10 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 
 import java.util.List;
 
+@Tag(
+        name = "Specializations",
+        description = "Clinic specialization management"
+)
 @RestController
 @RequestMapping("/api/specializations")
 @RequiredArgsConstructor

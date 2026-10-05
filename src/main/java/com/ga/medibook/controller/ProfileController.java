@@ -12,6 +12,10 @@ import org.springframework.web.multipart.MultipartFile;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
+@Tag(
+        name = "Profile",
+        description = "Authenticated user profile management and profile pictures"
+)
 @RestController
 @RequestMapping("/api/profile")
 @RequiredArgsConstructor

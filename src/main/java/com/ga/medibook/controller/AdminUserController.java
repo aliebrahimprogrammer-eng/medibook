@@ -14,6 +14,10 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 
 import java.util.List;
 
+@Tag(
+        name = "Admin - Users",
+        description = "Administrative user management and role management"
+)
 @RestController
 @RequestMapping("/api/admin/users")
 @RequiredArgsConstructor
