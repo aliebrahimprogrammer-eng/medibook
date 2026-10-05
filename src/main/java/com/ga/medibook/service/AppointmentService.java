@@ -12,6 +12,7 @@ import com.ga.medibook.model.enums.AppointmentStatus;
 import com.ga.medibook.model.enums.UserRole;
 import com.ga.medibook.model.enums.UserStatus;
 import com.ga.medibook.notification.EmailService;
+import com.ga.medibook.notification.SseNotificationService;
 import com.ga.medibook.repository.AppointmentRepository;
 import com.ga.medibook.repository.AvailabilityRepository;
 import com.ga.medibook.repository.DoctorRepository;
@@ -25,6 +26,7 @@ import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -37,6 +39,7 @@ public class AppointmentService {
     private final UserProfileRepository userProfileRepository;
     private final AuditLogService auditLogService;
     private final EmailService emailService;
+    private final SseNotificationService sseNotificationService;
 
     @Transactional
     public AppointmentResponse create(
@@ -187,6 +190,20 @@ public class AppointmentService {
                         + "Status: PENDING"
         );
 
+        //13- send SSE notification for patient
+        sseNotificationService.sendNotification(
+                patient.getEmail(),
+                "Appointment #" + appointment.getId()
+                        + " was successfully created."
+        );
+
+        //14- send SSE notification for doctor
+        sseNotificationService.sendNotification(
+                doctor.getUser().getEmail(),
+                "A new appointment #" + appointment.getId()
+                        + " has been booked."
+        );
+
         return toResponse(saved);
     }
 
@@ -255,6 +272,13 @@ public class AppointmentService {
                                 )
                         );
 
+        Doctor doctor = doctorRepository.findById(appointment.getDoctor().getId())
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "Doctor not found"
+                        )
+                );
+
         // Ownership check
         if (!appointment.getPatient()
                 .getId()
@@ -301,6 +325,18 @@ public class AppointmentService {
                 patient.getEmail(),
                 "MediBook Appointment Cancelled",
                 "Your appointment has been cancelled."
+        );
+
+        sseNotificationService.sendNotification(
+                patient.getEmail(),
+                "Appointment #" + appointment.getId()
+                        + " was cancelled."
+        );
+
+        sseNotificationService.sendNotification(
+                doctor.getUser().getEmail(),
+                "A new appointment #" + appointment.getId()
+                        + " has been cancelled."
         );
     }
 
@@ -406,6 +442,23 @@ public class AppointmentService {
                             + "End: " + appointment.getEndDateTime() + "\n"
                             + "Status: CONFIRMED"
             );
+            sseNotificationService.sendNotification(
+                    appointment.getPatient().getEmail(),
+                    "Your appointment has been confirmed.\n\n"
+                            + "Doctor ID: " + doctor.getId() + "\n"
+                            + "Start: " + appointment.getStartDateTime() + "\n"
+                            + "End: " + appointment.getEndDateTime() + "\n"
+                            + "Status: CONFIRMED"
+            );
+
+            sseNotificationService.sendNotification(
+                    doctor.getUser().getEmail(),
+                    "The appointment " + appointmentId + "has been confirmed.\n\n"
+                            + "Patient ID: " + appointment.getPatient().getId() + "\n"
+                            + "Start: " + appointment.getStartDateTime() + "\n"
+                            + "End: " + appointment.getEndDateTime() + "\n"
+                            + "Status: CONFIRMED"
+            );
         } else if (newStatus == AppointmentStatus.COMPLETED){
             emailService.sendEmail(
                     appointment.getPatient().getEmail(),
@@ -416,11 +469,40 @@ public class AppointmentService {
                             + "End: " + appointment.getEndDateTime() + "\n"
                             + "Status: COMPLETED"
             );
+            sseNotificationService.sendNotification(
+                    appointment.getPatient().getEmail(),
+                    "Your appointment has been completed.\n\n"
+                            + "Doctor ID: " + doctor.getId() + "\n"
+                            + "Start: " + appointment.getStartDateTime() + "\n"
+                            + "End: " + appointment.getEndDateTime() + "\n"
+                            + "Status: COMPLETED"
+            );
+
+            sseNotificationService.sendNotification(
+                    doctor.getUser().getEmail(),
+                    "The appointment " + appointmentId + "has been completed.\n\n"
+                            + "Patient ID: " + appointment.getPatient().getId() + "\n"
+                            + "Start: " + appointment.getStartDateTime() + "\n"
+                            + "End: " + appointment.getEndDateTime() + "\n"
+                            + "Status: COMPLETED"
+            );
         } else if (newStatus == AppointmentStatus.CANCELLED){
             emailService.sendEmail(
                     appointment.getPatient().getEmail(),
                     "MediBook Appointment Cancelled",
                     "Your appointment has been cancelled."
+            );
+
+            sseNotificationService.sendNotification(
+                    appointment.getPatient().getEmail(),
+                    "Appointment #" + appointment.getId()
+                            + " was cancelled."
+            );
+
+            sseNotificationService.sendNotification(
+                    doctor.getUser().getEmail(),
+                    "A new appointment #" + appointment.getId()
+                            + " has been cancelled."
             );
         }
 
