@@ -20,6 +20,8 @@ import com.ga.medibook.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -189,8 +191,9 @@ public class AppointmentService {
     }
 
     @Transactional(readOnly = true)
-    public List<AppointmentResponse> findPatientAppointments(
-            String patientEmail
+    public Page<AppointmentResponse> findPatientAppointments(
+            String patientEmail,
+            Pageable pageable
     ) {
 
         User patient = userRepository.findByEmail(patientEmail)
@@ -201,15 +204,14 @@ public class AppointmentService {
                 );
 
         return appointmentRepository
-                .findByPatientId(patient.getId())
-                .stream()
-                .map(this::toResponse)
-                .toList();
+                .findByPatientId(patient.getId(), pageable)
+                .map(this::toResponse);
     }
 
     @Transactional(readOnly = true)
-    public List<AppointmentResponse> findDoctorAppointments(
-            String doctorEmail
+    public Page<AppointmentResponse> findDoctorAppointments(
+            String doctorEmail,
+            Pageable pageable
     ) {
 
         User doctorUser = userRepository.findByEmail(doctorEmail)
@@ -228,10 +230,8 @@ public class AppointmentService {
         );
 
         return appointmentRepository
-                .findByDoctorId(doctor.getId())
-                .stream()
-                .map(this::toResponse)
-                .toList();
+                .findByDoctorId(doctor.getId(), pageable)
+                .map(this::toResponse);
     }
 
     @Transactional

@@ -10,6 +10,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/doctors")
@@ -40,6 +45,21 @@ public class DoctorController {
 
         return ResponseEntity.ok(
                 doctorService.findById(id)
+        );
+    }
+
+    @GetMapping
+    public ResponseEntity<Page<DoctorResponse>> searchDoctors(
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) String specialization,
+            @PageableDefault(size = 10, sort = "id") Pageable pageable
+    ) {
+        return ResponseEntity.ok(
+                doctorService.searchDoctors(
+                        name,
+                        specialization,
+                        pageable
+                )
         );
     }
 }
