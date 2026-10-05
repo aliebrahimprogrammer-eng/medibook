@@ -37,11 +37,26 @@ public class AuditLogService {
     }
 
     @Transactional(readOnly = true)
-    public Page<AuditLogResponse> findAll(Pageable pageable) {
+    public Page<AuditLogResponse> findAll(
+            String search,
+            Pageable pageable
+    ) {
 
-        return auditLogRepository
-                .findAll(pageable)
-                .map(this::toResponse);
+        Page<AuditLog> auditLogs;
+
+        if (search == null || search.isBlank()) {
+
+            auditLogs = auditLogRepository.findAll(pageable);
+
+        } else {
+
+            auditLogs = auditLogRepository.search(
+                    search.trim(),
+                    pageable
+            );
+        }
+
+        return auditLogs.map(this::toResponse);
     }
 
     private AuditLogResponse toResponse(AuditLog auditLog) {

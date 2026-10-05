@@ -12,6 +12,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestParam;
 
 @RestController
 @RequestMapping("/api/audit-logs")
@@ -23,6 +24,7 @@ public class AuditLogController {
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping
     public ResponseEntity<Page<AuditLogResponse>> findAll(
+            @RequestParam(required = false) String search,
             @PageableDefault(
                     size = 20,
                     sort = "createdAt",
@@ -32,7 +34,10 @@ public class AuditLogController {
     ) {
 
         return ResponseEntity.ok(
-                auditLogService.findAll(pageable)
+                auditLogService.findAll(
+                        search,
+                        pageable
+                )
         );
     }
 }
