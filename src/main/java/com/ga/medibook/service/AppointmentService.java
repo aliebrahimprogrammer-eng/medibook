@@ -442,6 +442,23 @@ public class AppointmentService {
                             + "End: " + appointment.getEndDateTime() + "\n"
                             + "Status: CONFIRMED"
             );
+            sseNotificationService.sendNotification(
+                    appointment.getPatient().getEmail(),
+                    "Your appointment has been confirmed.\n\n"
+                            + "Doctor ID: " + doctor.getId() + "\n"
+                            + "Start: " + appointment.getStartDateTime() + "\n"
+                            + "End: " + appointment.getEndDateTime() + "\n"
+                            + "Status: CONFIRMED"
+            );
+
+            sseNotificationService.sendNotification(
+                    doctor.getUser().getEmail(),
+                    "The appointment " + appointmentId + "has been confirmed.\n\n"
+                            + "Patient ID: " + appointment.getPatient().getId() + "\n"
+                            + "Start: " + appointment.getStartDateTime() + "\n"
+                            + "End: " + appointment.getEndDateTime() + "\n"
+                            + "Status: CONFIRMED"
+            );
         } else if (newStatus == AppointmentStatus.COMPLETED){
             emailService.sendEmail(
                     appointment.getPatient().getEmail(),
@@ -452,11 +469,40 @@ public class AppointmentService {
                             + "End: " + appointment.getEndDateTime() + "\n"
                             + "Status: COMPLETED"
             );
+            sseNotificationService.sendNotification(
+                    appointment.getPatient().getEmail(),
+                    "Your appointment has been completed.\n\n"
+                            + "Doctor ID: " + doctor.getId() + "\n"
+                            + "Start: " + appointment.getStartDateTime() + "\n"
+                            + "End: " + appointment.getEndDateTime() + "\n"
+                            + "Status: COMPLETED"
+            );
+
+            sseNotificationService.sendNotification(
+                    doctor.getUser().getEmail(),
+                    "The appointment " + appointmentId + "has been completed.\n\n"
+                            + "Patient ID: " + appointment.getPatient().getId() + "\n"
+                            + "Start: " + appointment.getStartDateTime() + "\n"
+                            + "End: " + appointment.getEndDateTime() + "\n"
+                            + "Status: COMPLETED"
+            );
         } else if (newStatus == AppointmentStatus.CANCELLED){
             emailService.sendEmail(
                     appointment.getPatient().getEmail(),
                     "MediBook Appointment Cancelled",
                     "Your appointment has been cancelled."
+            );
+
+            sseNotificationService.sendNotification(
+                    appointment.getPatient().getEmail(),
+                    "Appointment #" + appointment.getId()
+                            + " was cancelled."
+            );
+
+            sseNotificationService.sendNotification(
+                    doctor.getUser().getEmail(),
+                    "A new appointment #" + appointment.getId()
+                            + " has been cancelled."
             );
         }
 
