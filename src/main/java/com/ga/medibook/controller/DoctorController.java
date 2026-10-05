@@ -13,16 +13,26 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/doctors")
 @RequiredArgsConstructor
+@Tag(
+        name = "Doctors",
+        description = "Doctor management and doctor search operations"
+)
 public class DoctorController {
 
     private final DoctorService doctorService;
 
+    @Operation(
+            summary = "Create doctor",
+            description = "Creates a doctor profile for an existing DOCTOR user"
+    )
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
     public ResponseEntity<DoctorResponse> create(
@@ -38,6 +48,10 @@ public class DoctorController {
                 ));
     }
 
+    @Operation(
+            summary = "Get doctor by ID",
+            description = "Returns the details of a specific doctor"
+    )
     @GetMapping("/{id}")
     public ResponseEntity<DoctorResponse> findById(
             @PathVariable Long id
@@ -48,6 +62,10 @@ public class DoctorController {
         );
     }
 
+    @Operation(
+            summary = "Search doctors",
+            description = "Search doctors by name and/or specialization with pagination and sorting"
+    )
     @GetMapping
     public ResponseEntity<Page<DoctorResponse>> searchDoctors(
             @RequestParam(required = false) String name,
