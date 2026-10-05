@@ -9,6 +9,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 import java.util.List;
 
@@ -20,6 +22,10 @@ public class AdminUserController {
 
     private final AdminUserService adminUserService;
 
+    @Operation(
+            summary = "Update user role",
+            description = "Updates the role of an existing user"
+    )
     @PatchMapping("/{id}/role")
     public ResponseEntity<AdminUserResponse> updateUserRole(
             @PathVariable Long id,
@@ -35,6 +41,10 @@ public class AdminUserController {
         return ResponseEntity.ok(response);
     }
 
+    @Operation(
+            summary = "Get all users",
+            description = "Retrieves a list of all users"
+    )
     @GetMapping
     public ResponseEntity<List<AdminUserResponse>> findAllUsers() {
 
@@ -43,6 +53,10 @@ public class AdminUserController {
         );
     }
 
+    @Operation(
+            summary = "Deactivate user",
+            description = "Deactivates an existing user account"
+    )
     @PatchMapping("/{id}/deactivate")
     public ResponseEntity<Void> deactivateUser(
             Authentication authentication,
@@ -57,6 +71,10 @@ public class AdminUserController {
         return ResponseEntity.noContent().build();
     }
 
+    @Operation(
+            summary = "Reactivate user",
+            description = "Reactivates a previously deactivated user account"
+    )
     @PatchMapping("/{id}/reactivate")
     public ResponseEntity<Void> reactivateUser(
             Authentication authentication,
