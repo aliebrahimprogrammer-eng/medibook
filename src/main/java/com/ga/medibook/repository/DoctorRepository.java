@@ -5,6 +5,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 import java.util.Optional;
@@ -26,8 +28,9 @@ public interface DoctorRepository extends JpaRepository<Doctor, Long> {
         WHERE LOWER(p.firstName) LIKE LOWER(CONCAT('%', :name, '%'))
            OR LOWER(p.lastName) LIKE LOWER(CONCAT('%', :name, '%'))
     """)
-    List<Doctor> searchByName(
-            @Param("name") String name
+    Page<Doctor> searchByName(
+            @Param("name") String name,
+            Pageable pageable
     );
 
     @Query("""
@@ -37,8 +40,9 @@ public interface DoctorRepository extends JpaRepository<Doctor, Long> {
         JOIN d.specialization s
         WHERE LOWER(s.name) = LOWER(:specialization)
     """)
-    List<Doctor> searchBySpecialization(
-            @Param("specialization") String specialization
+    Page<Doctor> searchBySpecialization(
+            @Param("specialization") String specialization,
+            Pageable pageable
     );
 
     @Query("""
@@ -52,8 +56,9 @@ public interface DoctorRepository extends JpaRepository<Doctor, Long> {
         )
         AND LOWER(s.name) = LOWER(:specialization)
     """)
-    List<Doctor> searchByNameAndSpecialization(
+    Page<Doctor> searchByNameAndSpecialization(
             @Param("name") String name,
-            @Param("specialization") String specialization
+            @Param("specialization") String specialization,
+            Pageable pageable
     );
 }
