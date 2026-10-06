@@ -94,12 +94,10 @@ public class AppointmentService {
         }
 
         // 6. Find the doctor
-        Doctor doctor = doctorRepository.findById(
+        Doctor doctor = doctorRepository.findByIdForUpdate(
                 request.getDoctorId()
         ).orElseThrow(() ->
-                new IllegalArgumentException(
-                        "Doctor not found"
-                )
+                new IllegalArgumentException("Doctor not found")
         );
 
         // 7. Doctor must be active
