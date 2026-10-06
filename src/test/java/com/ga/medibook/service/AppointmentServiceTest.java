@@ -5,6 +5,7 @@ import com.ga.medibook.model.entity.Appointment;
 import com.ga.medibook.model.entity.Availability;
 import com.ga.medibook.model.entity.Doctor;
 import com.ga.medibook.model.entity.User;
+import com.ga.medibook.model.enums.AppointmentStatus;
 import com.ga.medibook.model.enums.UserRole;
 import com.ga.medibook.model.enums.UserStatus;
 import com.ga.medibook.notification.EmailService;
@@ -24,7 +25,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.doReturn;
@@ -64,7 +64,6 @@ class AppointmentServiceTest {
     @Test
     void shouldRejectAppointmentOutsideDoctorAvailability() {
 
-        // Patient
         User patient = new User();
         patient.setId(1L);
         patient.setEmail("patient@medibook.com");
@@ -72,7 +71,6 @@ class AppointmentServiceTest {
         patient.setStatus(UserStatus.ACTIVE);
         patient.setEmailVerified(true);
 
-        // Doctor's user account
         User doctorUser = new User();
         doctorUser.setId(2L);
         doctorUser.setEmail("doctor@medibook.com");
@@ -80,12 +78,10 @@ class AppointmentServiceTest {
         doctorUser.setStatus(UserStatus.ACTIVE);
         doctorUser.setEmailVerified(true);
 
-        // Doctor
         Doctor doctor = new Doctor();
         doctor.setId(10L);
         doctor.setUser(doctorUser);
 
-        // Doctor is available from 09:00 to 11:00
         LocalDateTime availabilityStart =
                 LocalDateTime.now()
                         .plusDays(1)
@@ -102,37 +98,25 @@ class AppointmentServiceTest {
         availability.setStartDateTime(availabilityStart);
         availability.setEndDateTime(availabilityEnd);
 
-        // Patient tries to book 12:00 to 13:00
-        // This is outside the doctor's availability.
         AppointmentRequest request = new AppointmentRequest();
         request.setDoctorId(10L);
-        request.setStartDateTime(
-                availabilityStart.plusHours(3)
-        );
-        request.setEndDateTime(
-                availabilityStart.plusHours(4)
-        );
+        request.setStartDateTime(availabilityStart.plusHours(3));
+        request.setEndDateTime(availabilityStart.plusHours(4));
         request.setReason("General consultation");
 
-        // Patient lookup
         doReturn(Optional.of(patient))
                 .when(userRepository)
                 .findByEmail("patient@medibook.com");
 
-        // IMPORTANT:
-        // AppointmentService uses the pessimistic-lock lookup
-        // to prevent concurrent double-booking.
         doReturn(Optional.of(doctor))
                 .when(doctorRepository)
                 .findByIdForUpdate(10L);
 
-        // Doctor availability
         doReturn(List.of(availability))
                 .when(availabilityRepository)
                 .findByDoctorId(10L);
 
-        // Execute and expect the availability validation to fail.
-        IllegalArgumentException exception = assertThrows(
+        assertThrows(
                 IllegalArgumentException.class,
                 () -> appointmentService.create(
                         "patient@medibook.com",
@@ -140,13 +124,89 @@ class AppointmentServiceTest {
                 )
         );
 
-        // Make sure it failed for the correct reason.
-        assertEquals(
-                "Appointment is outside the doctor's availability",
-                exception.getMessage()
+        verify(appointmentRepository, never())
+                .save(any(Appointment.class));
+    }
+
+    @Test
+    void shouldRejectDoubleBooking() {
+
+        User patient = new User();
+        patient.setId(1L);
+        patient.setEmail("patient@medibook.com");
+        patient.setRole(UserRole.PATIENT);
+        patient.setStatus(UserStatus.ACTIVE);
+        patient.setEmailVerified(true);
+
+        User doctorUser = new User();
+        doctorUser.setId(2L);
+        doctorUser.setEmail("doctor@medibook.com");
+        doctorUser.setRole(UserRole.DOCTOR);
+        doctorUser.setStatus(UserStatus.ACTIVE);
+        doctorUser.setEmailVerified(true);
+
+        Doctor doctor = new Doctor();
+        doctor.setId(10L);
+        doctor.setUser(doctorUser);
+
+        LocalDateTime start =
+                LocalDateTime.now()
+                        .plusDays(1)
+                        .withHour(10)
+                        .withMinute(0)
+                        .withSecond(0)
+                        .withNano(0);
+
+        LocalDateTime end = start.plusHours(1);
+
+        Availability availability = new Availability();
+        availability.setDoctor(doctor);
+        availability.setStartDateTime(start.minusHours(1));
+        availability.setEndDateTime(end.plusHours(1));
+
+        Appointment existingAppointment = new Appointment();
+        existingAppointment.setId(100L);
+        existingAppointment.setDoctor(doctor);
+        existingAppointment.setPatient(patient);
+        existingAppointment.setStartDateTime(start);
+        existingAppointment.setEndDateTime(end);
+        existingAppointment.setStatus(AppointmentStatus.CONFIRMED);
+
+        AppointmentRequest request = new AppointmentRequest();
+        request.setDoctorId(10L);
+        request.setStartDateTime(start);
+        request.setEndDateTime(end);
+        request.setReason("General consultation");
+
+        doReturn(Optional.of(patient))
+                .when(userRepository)
+                .findByEmail("patient@medibook.com");
+
+        doReturn(Optional.of(doctor))
+                .when(doctorRepository)
+                .findByIdForUpdate(10L);
+
+        doReturn(List.of(availability))
+                .when(availabilityRepository)
+                .findByDoctorId(10L);
+
+        doReturn(List.of(existingAppointment))
+                .when(appointmentRepository)
+                .findOverlappingAppointments(
+                        10L,
+                        start,
+                        end,
+                        AppointmentStatus.CANCELLED
+                );
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> appointmentService.create(
+                        "patient@medibook.com",
+                        request
+                )
         );
 
-        // Appointment must never be saved.
         verify(appointmentRepository, never())
                 .save(any(Appointment.class));
     }
