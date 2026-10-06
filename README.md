@@ -71,6 +71,39 @@ com.ga.medibook
 - **Notification:** Handles email and SSE notifications.
 - **Exception:** Handles application errors.
 
+## Project Planning & User Stories
+
+The development of MediBook was planned and tracked using Trello.
+
+The Trello board contains the project's planning structure, development tasks, progress, and final completion status. It also contains the user stories that define the main requirements from the perspective of patients, doctors, and administrators.
+
+### Project Planning
+
+The project was divided into smaller development stages to keep the implementation organized:
+
+1. Planning and Design
+2. Database and Core Setup
+3. Authentication and Security
+4. User Management
+5. Doctors and Availability
+6. Appointments
+7. Notifications and Auditing
+8. API Documentation
+9. Testing and Quality
+10. Final Documentation
+
+The Trello board was used to track the project's scope, development tasks, testing, documentation, and progress toward completion.
+
+**Trello Board:** [MediBook — Clinic Appointment System](https://trello.com/invite/b/6ac4cf744d887dc822afe426/ATTI93e3bc356c64ad6bb57acf1d36e02c199D87A553/medibook-clinic-appointment-system)
+
+### User Stories
+
+The Trello board contains user stories for the main MediBook users:
+
+The user stories follow the format:
+
+> As a [type of user], I want to [perform an action], so that [reason].
+
 ## Roles
 
 ### PATIENT
