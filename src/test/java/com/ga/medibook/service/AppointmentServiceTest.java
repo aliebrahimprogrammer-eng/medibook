@@ -27,6 +27,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.never;
@@ -270,5 +271,53 @@ class AppointmentServiceTest {
 
         verify(appointmentRepository)
                 .save(appointment);
+    }
+
+    @Test
+    void shouldRejectInactivePatientFromCreatingAppointment() {
+
+        User inactivePatient = new User();
+        inactivePatient.setId(1L);
+        inactivePatient.setEmail("patient@medibook.com");
+        inactivePatient.setRole(UserRole.PATIENT);
+        inactivePatient.setStatus(UserStatus.INACTIVE);
+        inactivePatient.setEmailVerified(true);
+
+        AppointmentRequest request = new AppointmentRequest();
+        request.setDoctorId(10L);
+
+        LocalDateTime start = LocalDateTime.now()
+                .plusDays(1)
+                .withHour(10)
+                .withMinute(0)
+                .withSecond(0)
+                .withNano(0);
+
+        request.setStartDateTime(start);
+        request.setEndDateTime(start.plusHours(1));
+        request.setReason("General consultation");
+
+        doReturn(Optional.of(inactivePatient))
+                .when(userRepository)
+                .findByEmail("patient@medibook.com");
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> appointmentService.create(
+                        "patient@medibook.com",
+                        request
+                )
+        );
+
+        assertEquals(
+                "Inactive users cannot create appointments",
+                exception.getMessage()
+        );
+
+        verify(doctorRepository, never())
+                .findByIdForUpdate(anyLong());
+
+        verify(appointmentRepository, never())
+                .save(any(Appointment.class));
     }
 }
