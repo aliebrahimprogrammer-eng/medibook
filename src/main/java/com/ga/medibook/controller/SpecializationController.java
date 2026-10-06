@@ -1,6 +1,7 @@
 package com.ga.medibook.controller;
 
 import com.ga.medibook.dto.request.SpecializationRequest;
+import com.ga.medibook.dto.request.SpecializationUpdateRequest;
 import com.ga.medibook.dto.response.SpecializationResponse;
 import com.ga.medibook.service.SpecializationService;
 import jakarta.validation.Valid;
@@ -68,6 +69,26 @@ public class SpecializationController {
 
         return ResponseEntity.ok(
                 specializationService.findById(id)
+        );
+    }
+
+    @Operation(
+            summary = "Update specialization",
+            description = "Updates an existing medical specialization"
+    )
+    @PreAuthorize("hasRole('ADMIN')")
+    @PutMapping("/{id}")
+    public ResponseEntity<SpecializationResponse> update(
+            @PathVariable Long id,
+            @Valid @RequestBody SpecializationUpdateRequest request,
+            Authentication authentication
+    ) {
+        return ResponseEntity.ok(
+                specializationService.update(
+                        id,
+                        request,
+                        authentication.getName()
+                )
         );
     }
 }

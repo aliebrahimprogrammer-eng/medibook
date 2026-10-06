@@ -1,6 +1,7 @@
 package com.ga.medibook.service;
 
 import com.ga.medibook.dto.request.SpecializationRequest;
+import com.ga.medibook.dto.request.SpecializationUpdateRequest;
 import com.ga.medibook.dto.response.SpecializationResponse;
 import com.ga.medibook.exception.ResourceConflictException;
 import com.ga.medibook.model.entity.Specialization;
@@ -90,4 +91,50 @@ public class SpecializationService {
                 specialization.getUpdatedAt()
         );
     }
+
+    @Transactional
+    public SpecializationResponse update(
+            Long id,
+            SpecializationUpdateRequest request,
+            String adminEmail
+    ) {
+        User admin = userRepository.findByEmail(adminEmail)
+                .orElseThrow(() ->
+                        new IllegalArgumentException("Admin user not found")
+                );
+
+        Specialization specialization =
+                specializationRepository.findById(id)
+                        .orElseThrow(() ->
+                                new IllegalArgumentException(
+                                        "Specialization not found"
+                                )
+                        );
+
+        if (!specialization.getName().equals(request.getName())
+                && specializationRepository.existsByName(request.getName())) {
+
+            throw new ResourceConflictException(
+                    "Specialization already exists"
+            );
+        }
+
+        specialization.setName(request.getName());
+        specialization.setDescription(request.getDescription());
+
+        Specialization updated =
+                specializationRepository.save(specialization);
+
+        auditLogService.log(
+                admin,
+                "UPDATE_SPECIALIZATION",
+                "SPECIALIZATION",
+                specialization.getId(),
+                "Specialization id " + specialization.getId()
+                        + " updated by admin id " + admin.getId()
+        );
+
+        return toResponse(updated);
+    }
+
 }
