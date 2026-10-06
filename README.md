@@ -239,7 +239,18 @@ Key development challenges included JWT authentication, role-based authorization
 - Add additional automated tests.
 - Add production deployment configuration.
 
-## Credits
+## Credits / External Resources
+
+The following resources were used during the development of MediBook:
+
+- Swagger/OpenAPI Documentation — REST API documentation.
+- JJWT Documentation — JWT implementation and token handling.
+- Stack Overflow — troubleshooting and resolving development issues.
+- Course materials and examples — guidance on Java, Spring Boot, REST APIs, security, testing, and database development.
+- ChatGPT — used as a development and learning assistant for explanations, troubleshooting, code review, and implementation guidance.
+
+All external resources were used for learning, reference, and troubleshooting. The MediBook application was implemented and adapted for the requirements of this project.
+
 This project was developed as an educational Java/Spring Boot backend project.
 
 The project uses Spring Boot, Spring Security, Spring Data JPA, Hibernate, PostgreSQL, JWT libraries, Lombok, JUnit, Mockito, and Swagger/OpenAPI.
