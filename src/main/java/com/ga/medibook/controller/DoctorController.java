@@ -1,6 +1,7 @@
 package com.ga.medibook.controller;
 
 import com.ga.medibook.dto.request.DoctorRequest;
+import com.ga.medibook.dto.request.DoctorUpdateRequest;
 import com.ga.medibook.dto.response.DoctorResponse;
 import com.ga.medibook.service.DoctorService;
 import jakarta.validation.Valid;
@@ -80,4 +81,25 @@ public class DoctorController {
                 )
         );
     }
+
+    @Operation(
+            summary = "Update doctor",
+            description = "Updates an existing doctor's specialization, license number, and bio"
+    )
+    @PreAuthorize("hasRole('ADMIN')")
+    @PutMapping("/{id}")
+    public ResponseEntity<DoctorResponse> update(
+            @PathVariable Long id,
+            @Valid @RequestBody DoctorUpdateRequest request,
+            Authentication authentication
+    ) {
+        return ResponseEntity.ok(
+                doctorService.update(
+                        id,
+                        request,
+                        authentication.getName()
+                )
+        );
+    }
+
 }
