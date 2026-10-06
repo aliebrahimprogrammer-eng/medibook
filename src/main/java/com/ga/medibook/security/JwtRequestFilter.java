@@ -54,6 +54,11 @@ public class JwtRequestFilter extends OncePerRequestFilter {
                 UserDetails userDetails =
                         myUserDetailsService.loadUserByUsername(username);
 
+                if (!userDetails.isEnabled()) {
+                    filterChain.doFilter(request, response);
+                    return;
+                }
+
                 UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(
                                 userDetails,
@@ -72,9 +77,7 @@ public class JwtRequestFilter extends OncePerRequestFilter {
             }
 
         } catch (Exception e) {
-
-            // Invalid JWT should not stop the filter chain.
-            // Spring Security will handle authorization afterward.
+            logger.warn("JWT authentication failed: {}");
         }
 
         filterChain.doFilter(request, response);
