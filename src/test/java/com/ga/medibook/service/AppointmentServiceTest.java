@@ -25,6 +25,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.doReturn;
@@ -209,5 +210,65 @@ class AppointmentServiceTest {
 
         verify(appointmentRepository, never())
                 .save(any(Appointment.class));
+    }
+
+    @Test
+    void shouldAllowPatientToCancelOwnAppointment() {
+
+        User patient = new User();
+        patient.setId(1L);
+        patient.setEmail("patient@medibook.com");
+        patient.setRole(UserRole.PATIENT);
+        patient.setStatus(UserStatus.ACTIVE);
+        patient.setEmailVerified(true);
+
+        User doctorUser = new User();
+        doctorUser.setId(2L);
+        doctorUser.setEmail("doctor@medibook.com");
+        doctorUser.setRole(UserRole.DOCTOR);
+        doctorUser.setStatus(UserStatus.ACTIVE);
+        doctorUser.setEmailVerified(true);
+
+        Doctor doctor = new Doctor();
+        doctor.setId(10L);
+        doctor.setUser(doctorUser);
+
+        Appointment appointment = new Appointment();
+        appointment.setId(100L);
+        appointment.setPatient(patient);
+        appointment.setDoctor(doctor);
+        appointment.setStartDateTime(
+                LocalDateTime.now().plusDays(1)
+        );
+        appointment.setEndDateTime(
+                LocalDateTime.now().plusDays(1).plusHours(1)
+        );
+        appointment.setStatus(AppointmentStatus.CONFIRMED);
+        appointment.setReason("General consultation");
+
+        doReturn(Optional.of(patient))
+                .when(userRepository)
+                .findByEmail("patient@medibook.com");
+
+        doReturn(Optional.of(appointment))
+                .when(appointmentRepository)
+                .findById(100L);
+
+        doReturn(Optional.of(doctor))
+                .when(doctorRepository)
+                .findById(10L);
+
+        appointmentService.cancelAppointment(
+                100L,
+                "patient@medibook.com"
+        );
+
+        assertEquals(
+                AppointmentStatus.CANCELLED,
+                appointment.getStatus()
+        );
+
+        verify(appointmentRepository)
+                .save(appointment);
     }
 }
