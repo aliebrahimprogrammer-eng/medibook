@@ -1,6 +1,7 @@
 package com.ga.medibook.service;
 
 import com.ga.medibook.dto.request.DoctorRequest;
+import com.ga.medibook.dto.request.DoctorUpdateRequest;
 import com.ga.medibook.dto.response.DoctorResponse;
 import com.ga.medibook.model.entity.Doctor;
 import com.ga.medibook.model.entity.Specialization;
@@ -173,6 +174,56 @@ public class DoctorService {
         }
 
         return doctors.map(this::toResponse);
+    }
+    @Transactional
+    public DoctorResponse update(
+            Long doctorId,
+            DoctorUpdateRequest request,
+            String adminEmail
+    ) {
+        User admin = userRepository.findByEmail(adminEmail)
+                .orElseThrow(() ->
+                        new IllegalArgumentException("Admin user not found")
+                );
+
+        Doctor doctor = doctorRepository.findById(doctorId)
+                .orElseThrow(() ->
+                        new IllegalArgumentException("Doctor not found")
+                );
+
+        Specialization specialization =
+                specializationRepository.findById(
+                        request.getSpecializationId()
+                ).orElseThrow(() ->
+                        new IllegalArgumentException("Specialization not found")
+                );
+
+        if (!doctor.getLicenseNumber().equals(request.getLicenseNumber())
+                && doctorRepository.existsByLicenseNumber(
+                request.getLicenseNumber()
+        )) {
+
+            throw new IllegalArgumentException(
+                    "License number is already registered"
+            );
+        }
+
+        doctor.setSpecialization(specialization);
+        doctor.setLicenseNumber(request.getLicenseNumber());
+        doctor.setBio(request.getBio());
+
+        Doctor updatedDoctor = doctorRepository.save(doctor);
+
+        auditLogService.log(
+                admin,
+                "UPDATE_DOCTOR",
+                "DOCTOR",
+                doctor.getId(),
+                "Doctor id " + doctor.getId()
+                        + " updated by admin id " + admin.getId()
+        );
+
+        return toResponse(updatedDoctor);
     }
 
 }
