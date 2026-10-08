@@ -23,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import com.ga.medibook.exception.ResourceConflictException;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -143,7 +144,7 @@ public class AppointmentService {
                 );
 
         if (!overlappingAppointments.isEmpty()) {
-            throw new IllegalArgumentException(
+            throw new ResourceConflictException(
                     "Doctor already has an appointment during this time"
             );
         }
