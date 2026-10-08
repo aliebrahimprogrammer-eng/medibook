@@ -7,11 +7,6 @@ import com.ga.medibook.model.enums.UserRole;
 import com.ga.medibook.model.enums.UserStatus;
 import com.ga.medibook.security.JWTUtils;
 import com.ga.medibook.security.MyUserDetails;
-import com.ga.medibook.repository.EmailVerificationTokenRepository;
-import com.ga.medibook.repository.PasswordResetTokenRepository;
-import com.ga.medibook.repository.UserProfileRepository;
-import com.ga.medibook.repository.UserRepository;
-import com.ga.medibook.notification.EmailService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -20,8 +15,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.crypto.password.PasswordEncoder;
-
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.when;
 
@@ -29,31 +22,10 @@ import static org.mockito.Mockito.when;
 class AuthServiceTest {
 
     @Mock
-    private UserRepository userRepository;
-
-    @Mock
-    private UserProfileRepository userProfileRepository;
-
-    @Mock
-    private PasswordEncoder passwordEncoder;
-
-    @Mock
     private AuthenticationManager authenticationManager;
 
     @Mock
     private JWTUtils jwtUtils;
-
-    @Mock
-    private EmailVerificationTokenRepository emailVerificationTokenRepository;
-
-    @Mock
-    private PasswordResetTokenRepository passwordResetTokenRepository;
-
-    @Mock
-    private AuditLogService auditLogService;
-
-    @Mock
-    private EmailService emailService;
 
     @Mock
     private Authentication authentication;

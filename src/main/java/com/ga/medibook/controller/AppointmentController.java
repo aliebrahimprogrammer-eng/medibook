@@ -18,7 +18,6 @@ import org.springframework.data.domain.Sort;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
-import java.util.List;
 
 @Tag(
         name = "Appointments",

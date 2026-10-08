@@ -8,17 +8,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.util.List;
 
 @Repository
 public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
-
-    List<AuditLog> findByUserId(Long userId);
-
-    List<AuditLog> findByEntityTypeAndEntityId(
-            String entityType,
-            Long entityId
-    );
 
     @Query("""
         SELECT a

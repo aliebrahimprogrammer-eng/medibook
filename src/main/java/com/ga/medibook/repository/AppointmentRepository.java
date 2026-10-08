@@ -26,16 +26,6 @@ public interface AppointmentRepository
             Pageable pageable
     );
 
-    List<Appointment> findByDoctorIdAndStatus(
-            Long doctorId,
-            AppointmentStatus status
-    );
-
-    List<Appointment> findByPatientIdAndStatus(
-            Long patientId,
-            AppointmentStatus status
-    );
-
     @Query("""
             SELECT a
             FROM Appointment a
