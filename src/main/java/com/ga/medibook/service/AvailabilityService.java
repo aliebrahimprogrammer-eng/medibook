@@ -2,6 +2,7 @@ package com.ga.medibook.service;
 
 import com.ga.medibook.dto.request.AvailabilityRequest;
 import com.ga.medibook.dto.response.AvailabilityResponse;
+import com.ga.medibook.exception.ResourceConflictException;
 import com.ga.medibook.model.entity.Availability;
 import com.ga.medibook.model.entity.Doctor;
 import com.ga.medibook.model.entity.User;
@@ -71,7 +72,7 @@ public class AvailabilityService {
                 );
 
         if (overlaps) {
-            throw new IllegalArgumentException(
+            throw new ResourceConflictException(
                     "Availability overlaps with an existing availability"
             );
         }
