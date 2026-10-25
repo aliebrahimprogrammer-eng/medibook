@@ -1,4 +1,4 @@
-# MediBook
+# MediBook V2
 
 ## Project Overview
 MediBook is a secure Spring Boot REST API for managing clinic appointments.
