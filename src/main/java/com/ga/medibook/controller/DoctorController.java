@@ -49,6 +49,22 @@ public class DoctorController {
     }
 
     @Operation(
+            summary = "Get my doctor profile",
+            description = "Returns the doctor profile belonging to the authenticated doctor"
+    )
+    @PreAuthorize("hasRole('DOCTOR')")
+    @GetMapping("/me")
+    public ResponseEntity<DoctorResponse> findMyProfile(
+            Authentication authentication
+    ) {
+        return ResponseEntity.ok(
+                doctorService.findByUserEmail(
+                        authentication.getName()
+                )
+        );
+    }
+
+    @Operation(
             summary = "Get doctor by ID",
             description = "Returns the details of a specific doctor"
     )
@@ -56,7 +72,6 @@ public class DoctorController {
     public ResponseEntity<DoctorResponse> findById(
             @PathVariable Long id
     ) {
-
         return ResponseEntity.ok(
                 doctorService.findById(id)
         );
@@ -100,5 +115,4 @@ public class DoctorController {
                 )
         );
     }
-
 }
