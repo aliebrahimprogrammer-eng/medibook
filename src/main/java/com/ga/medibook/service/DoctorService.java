@@ -15,7 +15,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -85,16 +84,41 @@ public class DoctorService {
                 admin,
                 "CREATE_DOCTOR",
                 "DOCTOR",
-                doctor.getId(),
-                "A new doctor id " + doctor.getId() + " created by admin id " +  admin.getId()
+                savedDoctor.getId(),
+                "A new doctor id " + savedDoctor.getId()
+                        + " created by admin id " + admin.getId()
         );
 
         return toResponse(savedDoctor);
     }
 
     @Transactional(readOnly = true)
-    public DoctorResponse findById(Long id) {
+    public DoctorResponse findByUserEmail(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "Doctor user not found"
+                        )
+                );
 
+        if (user.getRole() != UserRole.DOCTOR) {
+            throw new IllegalArgumentException(
+                    "The authenticated user is not a doctor"
+            );
+        }
+
+        Doctor doctor = doctorRepository.findByUserId(user.getId())
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "Doctor profile not found for this user"
+                        )
+                );
+
+        return toResponse(doctor);
+    }
+
+    @Transactional(readOnly = true)
+    public DoctorResponse findById(Long id) {
         Doctor doctor = doctorRepository.findById(id)
                 .orElseThrow(() ->
                         new IllegalArgumentException(
@@ -106,7 +130,6 @@ public class DoctorService {
     }
 
     private DoctorResponse toResponse(Doctor doctor) {
-
         User user = doctor.getUser();
 
         UserProfile profile =
@@ -117,8 +140,7 @@ public class DoctorService {
                                 )
                         );
 
-        Specialization specialization =
-                doctor.getSpecialization();
+        Specialization specialization = doctor.getSpecialization();
 
         return new DoctorResponse(
                 doctor.getId(),
@@ -139,7 +161,6 @@ public class DoctorService {
             String specialization,
             Pageable pageable
     ) {
-
         Page<Doctor> doctors;
 
         boolean hasName = name != null && !name.isBlank();
@@ -147,29 +168,22 @@ public class DoctorService {
                 specialization != null && !specialization.isBlank();
 
         if (hasName && hasSpecialization) {
-
             doctors = doctorRepository.searchByNameAndSpecialization(
                     name,
                     specialization,
                     pageable
             );
-
         } else if (hasName) {
-
             doctors = doctorRepository.searchByName(
                     name,
                     pageable
             );
-
         } else if (hasSpecialization) {
-
             doctors = doctorRepository.searchBySpecialization(
                     specialization,
                     pageable
             );
-
         } else {
-
             doctors = doctorRepository.findAll(pageable);
         }
 
@@ -202,7 +216,6 @@ public class DoctorService {
                 && doctorRepository.existsByLicenseNumber(
                 request.getLicenseNumber()
         )) {
-
             throw new IllegalArgumentException(
                     "License number is already registered"
             );
@@ -218,12 +231,11 @@ public class DoctorService {
                 admin,
                 "UPDATE_DOCTOR",
                 "DOCTOR",
-                doctor.getId(),
-                "Doctor id " + doctor.getId()
+                updatedDoctor.getId(),
+                "Doctor id " + updatedDoctor.getId()
                         + " updated by admin id " + admin.getId()
         );
 
         return toResponse(updatedDoctor);
     }
-
 }
