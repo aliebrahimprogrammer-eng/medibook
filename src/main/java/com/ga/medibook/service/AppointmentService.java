@@ -41,6 +41,7 @@ public class AppointmentService {
     private final AuditLogService auditLogService;
     private final EmailService emailService;
     private final SseNotificationService sseNotificationService;
+    private final BackgroundJobService backgroundJobService;
 
     @Transactional
     public AppointmentResponse create(
@@ -311,6 +312,7 @@ public class AppointmentService {
         );
 
         appointmentRepository.save(appointment);
+        backgroundJobService.scheduleWaitlistAllocation(appointment.getId());
 
         auditLogService.log(
                 patient,
@@ -419,6 +421,10 @@ public class AppointmentService {
         }
 
         appointmentRepository.save(appointment);
+
+        if (newStatus == AppointmentStatus.CANCELLED) {
+            backgroundJobService.scheduleWaitlistAllocation(appointment.getId());
+        }
 
         auditLogService.log(
                 doctorUser,
