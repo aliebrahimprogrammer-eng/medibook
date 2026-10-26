@@ -31,6 +31,7 @@ public class AppointmentWaitlistService {
     private final DoctorRepository doctorRepository;
     private final UserRepository userRepository;
     private final AuditLogService auditLogService;
+    private final AppointmentEventService appointmentEventService;
 
     /**
      * Adds an eligible patient to a doctor's waitlist.
@@ -150,6 +151,15 @@ public class AppointmentWaitlistService {
                         + end
         );
 
+        appointmentEventService.recordWaitlistEvent(
+                saved,
+                "WAITLIST_JOINED",
+                "Patient " + patient.getId()
+                        + " joined the waitlist for doctor "
+                        + doctor.getId()
+                        + " for " + start + " to " + end
+        );
+
         return toResponse(saved);
     }
 
@@ -206,14 +216,21 @@ public class AppointmentWaitlistService {
         }
 
         entry.setStatus(WaitlistStatus.CANCELLED);
-        waitlistRepository.save(entry);
+        AppointmentWaitlist saved = waitlistRepository.save(entry);
 
         auditLogService.log(
                 patient,
                 "CANCEL_APPOINTMENT_WAITLIST",
                 "APPOINTMENT_WAITLIST",
-                entry.getId(),
-                "Patient cancelled waitlist entry " + entry.getId()
+                saved.getId(),
+                "Patient cancelled waitlist entry " + saved.getId()
+        );
+
+        appointmentEventService.recordWaitlistEvent(
+                saved,
+                "WAITLIST_CANCELLED",
+                "Patient " + patient.getId()
+                        + " cancelled waitlist entry " + saved.getId()
         );
     }
 
