@@ -7,11 +7,12 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-
+import lombok.extern.slf4j.Slf4j;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class WaitlistJobDispatcher {
@@ -39,8 +40,11 @@ public class WaitlistJobDispatcher {
                         () -> allocationProcessor.processJob(job.getId())
                 );
             } catch (java.util.concurrent.RejectedExecutionException exception) {
-                // The job stays PENDING in the database and can be retried
-                // by a later polling cycle.
+                log.warn(
+                        "Executor rejected waitlist job {}; it remains pending for a later retry",
+                        job.getId(),
+                        exception
+                );
                 break;
             }
         }
