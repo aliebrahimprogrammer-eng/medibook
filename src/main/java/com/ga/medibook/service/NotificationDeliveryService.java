@@ -64,6 +64,23 @@ public class NotificationDeliveryService {
     }
 
     /**
+     * Recovers deliveries that have been PROCESSING for more than five minutes.
+     * The regular scheduled worker can retry them if attempts remain.
+     */
+    @Scheduled(fixedDelay = 60000)
+    public void recoverStuckDeliveries() {
+        LocalDateTime cutoff = LocalDateTime.now().minusMinutes(5);
+
+        int recovered = deliveryRepository.recoverStuckDeliveries(cutoff);
+
+        if (recovered > 0) {
+            System.out.println(
+                    "Recovered " + recovered + " stuck notification deliveries"
+            );
+        }
+    }
+
+    /**
      * Claims the delivery in the database before attempting delivery.
      * This method intentionally has no surrounding transaction:
      * the atomic claim must commit before external services are called.
