@@ -11,6 +11,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
+
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -63,5 +64,21 @@ public interface NotificationDeliveryRepository
         """)
     Optional<NotificationDelivery> findWithNotificationAndUserById(
             @Param("deliveryId") Long deliveryId
+    );
+
+    /**
+     * Set NotificationDelivery to FAILED when timed out while processing as provided cutoff time
+     */
+    @Modifying
+    @Transactional
+    @Query("""
+    UPDATE NotificationDelivery d
+    SET d.status = 'FAILED',
+        d.lastError = 'Delivery timed out while processing'
+    WHERE d.status = 'PROCESSING'
+      AND d.lastAttemptAt < :cutoff
+    """)
+    int recoverStuckDeliveries(
+            @Param("cutoff") LocalDateTime cutoff
     );
 }
