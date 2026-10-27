@@ -24,7 +24,6 @@ import java.util.List;
 public class WaitlistAllocationProcessor {
 
     private static final String PENDING = "PENDING";
-    private static final String PROCESSING = "PROCESSING";
     private static final String COMPLETED = "COMPLETED";
 
     private final BackgroundJobRepository backgroundJobRepository;
@@ -32,6 +31,7 @@ public class WaitlistAllocationProcessor {
     private final AppointmentWaitlistRepository waitlistRepository;
     private final DoctorRepository doctorRepository;
     private final AppointmentEventService appointmentEventService;
+    private final PersistentNotificationService persistentNotificationService;
 
     @Transactional
     public void processJob(Long jobId) {
@@ -63,7 +63,7 @@ public class WaitlistAllocationProcessor {
 
         Long doctorId = cancelledAppointment.getDoctor().getId();
 
-        // Serialize allocation and appointment creation for this doctor.
+        // Lock the doctor while checking and allocating the slot.
         Doctor doctor = doctorRepository.findByIdForUpdate(doctorId)
                 .orElseThrow(() ->
                         new IllegalArgumentException(
@@ -85,6 +85,7 @@ public class WaitlistAllocationProcessor {
             return;
         }
 
+        // Find the earliest eligible waiting patient.
         List<AppointmentWaitlist> candidates =
                 waitlistRepository
                         .findByDoctorIdAndStatusOrderByCreatedAtAsc(
@@ -115,6 +116,7 @@ public class WaitlistAllocationProcessor {
             return;
         }
 
+        // Create the replacement appointment.
         Appointment newAppointment = new Appointment();
         newAppointment.setPatient(match.getPatient());
         newAppointment.setDoctor(doctor);
@@ -132,15 +134,31 @@ public class WaitlistAllocationProcessor {
         Appointment savedAppointment =
                 appointmentRepository.save(newAppointment);
 
+        // Mark the waitlist entry as matched.
         match.setStatus(WaitlistStatus.MATCHED);
         match.setMatchedAppointment(savedAppointment);
         waitlistRepository.save(match);
 
+        // Record the allocation event.
         appointmentEventService.recordWaitlistEvent(
                 match,
                 "WAITLIST_MATCHED",
                 "Waitlist entry matched to appointment "
                         + savedAppointment.getId()
+        );
+
+        // Persist an in-app notification and a pending email delivery.
+        persistentNotificationService.createNotification(
+                match.getPatient(),
+                savedAppointment,
+                match,
+                "WAITLIST_MATCHED",
+                "An appointment slot is available",
+                "A slot has been allocated to you for "
+                        + savedAppointment.getStartDateTime()
+                        + " to "
+                        + savedAppointment.getEndDateTime()
+                        + ". Your appointment is currently PENDING."
         );
 
         completeJob(job);
