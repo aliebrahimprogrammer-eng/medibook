@@ -1,6 +1,7 @@
 package com.ga.medibook.service;
 
 import com.ga.medibook.dto.request.AppointmentRequest;
+import com.ga.medibook.exception.ResourceConflictException;
 import com.ga.medibook.model.entity.Appointment;
 import com.ga.medibook.model.entity.Availability;
 import com.ga.medibook.model.entity.Doctor;
@@ -53,6 +54,9 @@ class AppointmentServiceTest {
 
     @Mock
     private SseNotificationService sseNotificationService;
+
+    @Mock
+    private BackgroundJobService backgroundJobService;
 
     @InjectMocks
     private AppointmentService appointmentService;
@@ -196,7 +200,7 @@ class AppointmentServiceTest {
                 );
 
         assertThrows(
-                IllegalArgumentException.class,
+                ResourceConflictException.class,
                 () -> appointmentService.create(
                         "patient@medibook.com",
                         request
@@ -265,6 +269,9 @@ class AppointmentServiceTest {
 
         verify(appointmentRepository)
                 .save(appointment);
+
+        verify(backgroundJobService)
+                .scheduleWaitlistAllocation(100L);
     }
 
     @Test

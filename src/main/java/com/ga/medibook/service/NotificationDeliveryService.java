@@ -1,3 +1,4 @@
+
 package com.ga.medibook.service;
 
 import com.ga.medibook.model.entity.Notification;
@@ -9,9 +10,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -20,7 +21,6 @@ public class NotificationDeliveryService {
 
     private static final String PENDING = "PENDING";
     private static final String FAILED = "FAILED";
-    private static final String PROCESSING = "PROCESSING";
     private static final String SENT = "SENT";
 
     private static final int MAX_ATTEMPTS = 3;
@@ -44,10 +44,9 @@ public class NotificationDeliveryService {
                         PageRequest.of(0, 20)
                 );
 
-        List<NotificationDelivery> deliveries =
-                new java.util.ArrayList<>();
-
+        List<NotificationDelivery> deliveries = new ArrayList<>();
         deliveries.addAll(pending);
+
         failed.stream()
                 .filter(delivery ->
                         delivery.getAttemptCount() < MAX_ATTEMPTS)
@@ -57,33 +56,54 @@ public class NotificationDeliveryService {
             try {
                 deliver(delivery.getId());
             } catch (RuntimeException exception) {
-                // One failed delivery must not stop the remaining batch.
+                // One delivery failure must not stop the remaining batch.
+                // The delivery remains PROCESSING if an unexpected failure
+                // occurs after the claim; recovery can be added separately.
             }
         }
     }
 
-    @Transactional
+    /**
+     * Recovers deliveries that have been PROCESSING for more than five minutes.
+     * The regular scheduled worker can retry them if attempts remain.
+     */
+    @Scheduled(fixedDelay = 60000)
+    public void recoverStuckDeliveries() {
+        LocalDateTime cutoff = LocalDateTime.now().minusMinutes(5);
+
+        int recovered = deliveryRepository.recoverStuckDeliveries(cutoff);
+
+        if (recovered > 0) {
+            System.out.println(
+                    "Recovered " + recovered + " stuck notification deliveries"
+            );
+        }
+    }
+
+    /**
+     * Claims the delivery in the database before attempting delivery.
+     * This method intentionally has no surrounding transaction:
+     * the atomic claim must commit before external services are called.
+     */
     public void deliver(Long deliveryId) {
 
+        int claimed = deliveryRepository.claimPendingDelivery(
+                deliveryId,
+                LocalDateTime.now()
+        );
+
+        if (claimed == 0) {
+            // Already claimed, sent, or out of retries.
+            return;
+        }
+
         NotificationDelivery delivery =
-                deliveryRepository.findById(deliveryId)
+                deliveryRepository.findWithNotificationAndUserById(deliveryId)
                         .orElseThrow(() ->
                                 new IllegalArgumentException(
                                         "Delivery not found: " + deliveryId
                                 )
                         );
-
-        if (SENT.equals(delivery.getStatus())
-                || PROCESSING.equals(delivery.getStatus())
-                || delivery.getAttemptCount() >= MAX_ATTEMPTS) {
-            return;
-        }
-
-        delivery.setStatus(PROCESSING);
-        delivery.setAttemptCount(delivery.getAttemptCount() + 1);
-        delivery.setLastAttemptAt(LocalDateTime.now());
-        delivery.setLastError(null);
-        deliveryRepository.save(delivery);
 
         Notification notification = delivery.getNotification();
 
@@ -95,26 +115,33 @@ public class NotificationDeliveryService {
                         notification.getMessage()
                 );
             }
+        } catch (RuntimeException exception) {
+            delivery.setStatus(FAILED);
+            delivery.setLastError(
+                    exception.getMessage() == null
+                            ? "Email delivery failed"
+                            : exception.getMessage()
+            );
 
-            // SSE is best-effort: it reaches currently connected clients.
+            deliveryRepository.save(delivery);
+            return;
+        }
+
+        // SSE is best-effort. An SSE failure must not cause a successfully
+        // sent email to be retried.
+        try {
             sseNotificationService.sendNotification(
                     notification.getUser().getEmail(),
                     notification.getTitle() + ": "
                             + notification.getMessage()
             );
-
-            delivery.setStatus(SENT);
-            delivery.setDeliveredAt(LocalDateTime.now());
-            delivery.setLastError(null);
-
-        } catch (RuntimeException exception) {
-            delivery.setStatus(FAILED);
-            delivery.setLastError(
-                    exception.getMessage() == null
-                            ? "Notification delivery failed"
-                            : exception.getMessage()
-            );
+        } catch (RuntimeException ignored) {
+            // No connected SSE client, or another SSE delivery error.
         }
+
+        delivery.setStatus(SENT);
+        delivery.setDeliveredAt(LocalDateTime.now());
+        delivery.setLastError(null);
 
         deliveryRepository.save(delivery);
     }
