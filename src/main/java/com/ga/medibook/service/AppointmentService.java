@@ -517,34 +517,44 @@ public class AppointmentService {
 
     }
 
+
     private AppointmentResponse toResponse(
             Appointment appointment
     ) {
-
-        UserProfile doctorProfile =
-                userProfileRepository
-                        .findByUserId(
-                                appointment
-                                        .getDoctor()
-                                        .getUser()
-                                        .getId()
+        UserProfile doctorProfile = userProfileRepository
+                .findByUserId(
+                        appointment.getDoctor().getUser().getId()
+                )
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "Doctor profile not found"
                         )
-                        .orElseThrow(() ->
-                                new IllegalArgumentException(
-                                        "Doctor profile not found"
-                                )
-                        );
+                );
 
-        String doctorName =
-                doctorProfile.getFirstName()
-                        + " "
-                        + doctorProfile.getLastName();
+        UserProfile patientProfile = userProfileRepository
+                .findByUserId(
+                        appointment.getPatient().getId()
+                )
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "Patient profile not found"
+                        )
+                );
+
+        String doctorName = doctorProfile.getFirstName()
+                + " "
+                + doctorProfile.getLastName();
+
+        String patientName = patientProfile.getFirstName()
+                + " "
+                + patientProfile.getLastName();
 
         return new AppointmentResponse(
                 appointment.getId(),
                 appointment.getPatient().getId(),
                 appointment.getDoctor().getId(),
                 doctorName,
+                patientName,
                 appointment.getStartDateTime(),
                 appointment.getEndDateTime(),
                 appointment.getStatus(),
@@ -553,6 +563,7 @@ public class AppointmentService {
                 appointment.getUpdatedAt()
         );
     }
+
 
     @Transactional(readOnly = true)
     public AppointmentResponse findById(

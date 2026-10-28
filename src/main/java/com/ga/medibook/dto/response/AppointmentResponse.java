@@ -18,6 +18,8 @@ public class AppointmentResponse {
 
     private String doctorName;
 
+    private String patientName;
+
     private LocalDateTime startDateTime;
 
     private LocalDateTime endDateTime;
