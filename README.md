@@ -308,6 +308,42 @@ The tests cover important authentication, security, validation, and appointment 
 
 Concurrency tests use the PostgreSQL test database to exercise database-level claiming behavior. Run `mvn test` before submission and update this section if the final test results differ from the scenarios listed above.
 
+## Frontend Setup
+
+The MediBook frontend is maintained in a separate repository:
+
+**Frontend Repository:** https://github.com/aliebrahimprogrammer-eng/medibook-frontend
+
+### Prerequisites
+- Node.js and npm
+- The MediBook backend running locally if you want to use the frontend with the API
+
+### Clone and Install
+
+Clone the frontend repository and install its dependencies:
+
+```bash
+git clone https://github.com/aliebrahimprogrammer-eng/medibook-frontend.git
+cd medibook-frontend
+npm install
+```
+
+### Run the Frontend
+
+Start the Angular development server from the frontend project directory:
+
+```bash
+npx ng serve --open
+```
+
+Then open:
+
+```text
+http://localhost:4200
+```
+
+The frontend and backend run as separate applications. Start the Spring Boot backend separately using the backend instructions above. Make sure the frontend's API base URL/configuration points to the backend address used by your local setup.
+
 ## Appointment Business Rules
 - Only patient users can create appointments.
 - The patient must be active and email verified.
