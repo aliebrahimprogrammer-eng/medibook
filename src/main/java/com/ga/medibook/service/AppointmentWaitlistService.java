@@ -15,6 +15,7 @@ import com.ga.medibook.repository.AppointmentWaitlistRepository;
 import com.ga.medibook.repository.AvailabilityRepository;
 import com.ga.medibook.repository.DoctorRepository;
 import com.ga.medibook.repository.UserRepository;
+import com.ga.medibook.repository.UserProfileRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,6 +33,7 @@ public class AppointmentWaitlistService {
     private final UserRepository userRepository;
     private final AuditLogService auditLogService;
     private final AppointmentEventService appointmentEventService;
+    private final UserProfileRepository userProfileRepository;
 
     /**
      * Adds an eligible patient to a doctor's waitlist.
@@ -237,10 +239,20 @@ public class AppointmentWaitlistService {
     private AppointmentWaitlistResponse toResponse(
             AppointmentWaitlist entry
     ) {
+        Long doctorUserId = entry.getDoctor().getUser().getId();
+
+        String doctorName = userProfileRepository
+                .findByUserId(doctorUserId)
+                .map(profile ->
+                        profile.getFirstName() + " " + profile.getLastName()
+                )
+                .orElse("Unknown Doctor");
+
         return new AppointmentWaitlistResponse(
                 entry.getId(),
                 entry.getPatient().getId(),
                 entry.getDoctor().getId(),
+                doctorName,
                 entry.getPreferredStartDateTime(),
                 entry.getPreferredEndDateTime(),
                 entry.getStatus(),
