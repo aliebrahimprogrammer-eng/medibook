@@ -19,6 +19,7 @@ import com.ga.medibook.repository.DoctorRepository;
 import com.ga.medibook.repository.SpecializationRepository;
 import com.ga.medibook.repository.UserProfileRepository;
 import com.ga.medibook.repository.UserRepository;
+import org.springframework.beans.factory.annotation.Value;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -46,6 +47,11 @@ public class DataSeeder implements CommandLineRunner {
     private final AvailabilityRepository availabilityRepository;
     private final AppointmentRepository appointmentRepository;
     private final AppointmentWaitlistRepository appointmentWaitlistRepository;
+    @Value("${ADMIN_EMAIL}")
+    private String adminEmail;
+
+    @Value("${ADMIN_PASSWORD}")
+    private String adminPassword;
 
     @Override
     @Transactional
@@ -81,8 +87,8 @@ public class DataSeeder implements CommandLineRunner {
 
     private void seedUsers() {
         createUserIfNotExists(
-                "admin@medibook.com",
-                "Password123",
+                adminEmail,
+                adminPassword,
                 UserRole.ADMIN,
                 "Admin",
                 "User"
