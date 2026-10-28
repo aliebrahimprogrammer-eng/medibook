@@ -1,9 +1,11 @@
-# MediBook V2 Start
+# MediBook V2
 
 ## Project Overview
 MediBook is a secure Spring Boot REST API for managing clinic appointments.
 
 The system provides separate access for patients, doctors, and administrators. It supports user registration and authentication, email verification, password recovery, doctor profiles, specializations, doctor availability, appointment booking and cancellation, appointment status management, notifications, auditing, and administrative user management.
+
+Project 3 extends the existing MediBook application with a concurrent appointment waitlist and automatic slot-allocation workflow. When an appointment is cancelled, a background worker can match the released slot to an eligible patient on the waitlist.
 
 ## Features
 - User registration and login
@@ -25,6 +27,16 @@ The system provides separate access for patients, doctors, and administrators. I
 - Swagger/OpenAPI documentation
 - Automated tests for important business logic and authentication
 
+### Project 3: Waitlist and concurrent slot allocation
+- Patients can join a doctor's appointment waitlist for a preferred time range.
+- Patients can view their own waitlist entries and cancel entries that are still waiting.
+- Cancelling an appointment schedules a persistent background job to try to allocate the released slot.
+- The worker selects an eligible waiting entry in FIFO order.
+- The matching process creates an appointment, marks the waitlist entry as matched, records an event, and creates a persistent notification.
+- Background notification delivery supports retries and recovery of deliveries that remain stuck in processing.
+- Database locking and atomic status updates protect critical operations when workers or API requests run concurrently.
+- A bounded `ExecutorService` thread pool runs waitlist allocation jobs asynchronously.
+
 ## Technology Stack
 - Java 17
 - Spring Boot 4.1.1
@@ -40,6 +52,8 @@ The system provides separate access for patients, doctors, and administrators. I
 - Mockito
 - Swagger / OpenAPI
 - Embedded Tomcat
+- Java `ExecutorService`, scheduled tasks, and Server-Sent Events (SSE)
+
 
 ## Architecture
 MediBook follows a layered architecture:
@@ -96,6 +110,23 @@ The Trello board was used to track the project's scope, development tasks, testi
 
 **Trello Board:** [MediBook — Clinic Appointment System](https://trello.com/invite/b/6ac4cf744d887dc822afe426/ATTI93e3bc356c64ad6bb57acf1d36e02c199D87A553/medibook-clinic-appointment-system)
 
+### Project 3 Planning
+
+The project was divided into smaller development stages to keep the implementation organized:
+
+1. Planning and Design
+2. Add new entities and repository
+3. Waitlist, background jobs implementation
+4. Notifications persistence and retry implementation
+5. Create tests for concurrency 
+6. API Documentation
+7. Testing and Quality
+8. Final Documentation
+
+The Trello board was used to track the project's scope, development tasks, testing, documentation, and progress toward completion.
+
+**Trello Board V2:** [MediBook — Clinic Appointment System]([https://trello.com/invite/b/6ac4cf744d887dc822afe426/ATTI93e3bc356c64ad6bb57acf1d36e02c199D87A553/medibook-clinic-appointment-system](https://trello.com/invite/b/6ae06698cc291d572ea0ba6c/ATTIbb65c586ca42ec845ed5f61fe9038e62000CFF61/medibook-v2-clinic-appointment-system))
+
 ### User Stories
 
 The Trello board contains user stories for the main MediBook users:
@@ -129,7 +160,45 @@ Main entities:
 - PasswordResetToken
 - AuditLog
 
+Project 3 adds five entities:
+- `AppointmentWaitlist` — stores a patient's requested doctor and preferred time range, waitlist status, and any matched appointment.
+- `AppointmentEvent` — records events associated with appointment and waitlist processing.
+- `Notification` — stores persistent user notifications.
+- `NotificationDelivery` — tracks delivery channel, status, attempts, errors, and delivery timestamps.
+- `BackgroundJob` — persists asynchronous work such as waitlist allocation, including job status and processing information.
+
+
 The database contains meaningful relationships between users, profiles, doctors, specializations, availability, appointments, tokens, and audit logs.
+
+
+## Project 3 Workflow
+
+1. A patient books an appointment for a doctor and time.
+2. Another patient can join the waitlist for a compatible time range.
+3. When the booked appointment is cancelled, the application creates a persistent waitlist-allocation background job.
+4. A scheduled dispatcher submits pending jobs to a bounded `ExecutorService` thread pool.
+5. The worker atomically claims the job, locks the doctor record, checks for overlapping appointments, and selects an eligible waiting entry.
+6. If a match is found, the worker creates an appointment for the waiting patient, marks the waitlist entry as matched, records an event, creates a persistent notification, and completes the job.
+7. A separate scheduled worker processes pending notification deliveries and retries eligible failures.
+8. A recovery task marks notification deliveries stuck in `PROCESSING` for more than five minutes as `FAILED`, allowing them to be retried within the configured attempt limit.
+
+If no eligible waitlist entry is found, the allocation job finishes without assigning the slot.
+
+## Concurrency and Consistency
+
+### Race condition addressed
+
+Multiple API requests or background workers can try to process the same released appointment slot or claim the same pending job/delivery at the same time. Without protection, this could lead to duplicate processing or conflicting appointment allocation.
+
+### Techniques used
+
+- **Pessimistic database locking:** The doctor record is locked during critical slot-allocation work so competing transactions for that doctor are serialized.
+- **Atomic conditional updates:** Background jobs and notification deliveries are claimed with database updates that only succeed when the record is in an eligible status. The affected-row count indicates whether the claim succeeded.
+- **Transactions:** Related database changes during allocation are grouped into a transaction.
+- **Database constraints:** Unique constraints prevent duplicate job records for the same job type and triggering appointment, and duplicate delivery records for the same notification and channel.
+- **Bounded thread pool:** A fixed-size worker pool processes allocation jobs with a bounded queue rather than creating an unbounded number of threads.
+- **Persistent jobs and deliveries:** Work is represented in the database so pending work and failure status can be inspected and retried.
+
 
 ## Security
 MediBook uses Spring Security with JWT authentication.
@@ -196,7 +265,7 @@ jdbc:postgresql://localhost:5432/medibook_test
 
 ### Environment Variables
 The application reads sensitive configuration from environment variables:
-
+You can refer to .env.example to create your own .env in the project root
 ```text
 DB_USERNAME
 DB_PASSWORD
@@ -232,6 +301,12 @@ The tests cover important authentication, security, validation, and appointment 
 6. Patients can cancel their own appointments.
 7. Patients cannot access admin-only endpoints.
 8. Inactive patients cannot create appointments.
+9. Waitlist allocation processing
+10. Concurrent attempts to claim a background job
+11. Concurrent attempts to claim a notification delivery
+12. Recovery of stale notification deliveries
+
+Concurrency tests use the PostgreSQL test database to exercise database-level claiming behavior. Run `mvn test` before submission and update this section if the final test results differ from the scenarios listed above.
 
 ## Appointment Business Rules
 - Only patient users can create appointments.
@@ -264,6 +339,7 @@ Sensitive values are supplied through environment variables.
 
 ## Challenges
 Key development challenges included JWT authentication, role-based authorization, appointment availability validation, double-booking prevention, method-level security testing, rate limit and implementing email/SSE notifications.
+For Project 3, additional challenges included coordinating concurrent allocation attempts, making job/delivery claiming atomic, persisting background work, and recovering notification deliveries left in a processing state.
 
 ## Future Improvements
 - Add a frontend application.

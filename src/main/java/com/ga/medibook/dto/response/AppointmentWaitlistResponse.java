@@ -9,6 +9,7 @@ public record AppointmentWaitlistResponse(
         Long id,
         Long patientId,
         Long doctorId,
+        String doctorName,
         LocalDateTime preferredStartDateTime,
         LocalDateTime preferredEndDateTime,
         WaitlistStatus status,

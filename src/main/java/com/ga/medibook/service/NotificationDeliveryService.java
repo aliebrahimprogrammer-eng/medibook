@@ -14,7 +14,9 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class NotificationDeliveryService {
@@ -56,9 +58,11 @@ public class NotificationDeliveryService {
             try {
                 deliver(delivery.getId());
             } catch (RuntimeException exception) {
-                // One delivery failure must not stop the remaining batch.
-                // The delivery remains PROCESSING if an unexpected failure
-                // occurs after the claim; recovery can be added separately.
+                log.error(
+                        "Unexpected error processing notification delivery {}",
+                        delivery.getId(),
+                        exception
+                );
             }
         }
     }
@@ -116,14 +120,21 @@ public class NotificationDeliveryService {
                 );
             }
         } catch (RuntimeException exception) {
+            String errorMessage = exception.getMessage() == null
+                    ? "Email delivery failed"
+                    : exception.getMessage();
+
             delivery.setStatus(FAILED);
-            delivery.setLastError(
-                    exception.getMessage() == null
-                            ? "Email delivery failed"
-                            : exception.getMessage()
-            );
+            delivery.setLastError(errorMessage);
 
             deliveryRepository.save(delivery);
+
+            log.error(
+                    "Email delivery {} failed on attempt {}",
+                    deliveryId,
+                    delivery.getAttemptCount(),
+                    exception
+            );
             return;
         }
 
@@ -135,8 +146,12 @@ public class NotificationDeliveryService {
                     notification.getTitle() + ": "
                             + notification.getMessage()
             );
-        } catch (RuntimeException ignored) {
-            // No connected SSE client, or another SSE delivery error.
+        } catch (RuntimeException exception) {
+            log.debug(
+                    "Best-effort SSE notification failed for delivery {}",
+                    deliveryId,
+                    exception
+            );
         }
 
         delivery.setStatus(SENT);

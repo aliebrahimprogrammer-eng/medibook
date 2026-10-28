@@ -28,6 +28,12 @@ import com.ga.medibook.exception.ResourceConflictException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.locks.ReentrantLock;
 
 @Service
 @RequiredArgsConstructor
@@ -42,6 +48,8 @@ public class AppointmentService {
     private final EmailService emailService;
     private final SseNotificationService sseNotificationService;
     private final BackgroundJobService backgroundJobService;
+    private static final ConcurrentMap<Long, ReentrantLock> DOCTOR_BOOKING_LOCKS =
+            new ConcurrentHashMap<>();
 
     @Transactional
     public AppointmentResponse create(
@@ -95,19 +103,36 @@ public class AppointmentService {
             );
         }
 
-        // 6. Find the doctor
+        // 6. Acquire a JVM-level lock for this doctor.
+        // Keep the lock until the transaction commits or rolls back.
+        ReentrantLock doctorBookingLock = DOCTOR_BOOKING_LOCKS.computeIfAbsent(
+                request.getDoctorId(),
+                ignored -> new ReentrantLock()
+        );
+
+        doctorBookingLock.lock();
+
+        try {
+            TransactionSynchronizationManager.registerSynchronization(
+                    new TransactionSynchronization() {
+                        @Override
+                        public void afterCompletion(int status) {
+                            doctorBookingLock.unlock();
+                        }
+                    }
+            );
+        } catch (RuntimeException exception) {
+            doctorBookingLock.unlock();
+            throw exception;
+        }
+
+        // 7. Find the doctor while holding the JVM-level lock.
+        // The database pessimistic lock is still required.
         Doctor doctor = doctorRepository.findByIdForUpdate(
                 request.getDoctorId()
         ).orElseThrow(() ->
                 new IllegalArgumentException("Doctor not found")
         );
-
-        // 7. Doctor must be active
-        if (doctor.getUser().getStatus() != UserStatus.ACTIVE) {
-            throw new IllegalArgumentException(
-                    "Doctor is inactive"
-            );
-        }
 
         // 8. Check doctor availability
         List<Availability> availabilities =
@@ -517,34 +542,44 @@ public class AppointmentService {
 
     }
 
+
     private AppointmentResponse toResponse(
             Appointment appointment
     ) {
-
-        UserProfile doctorProfile =
-                userProfileRepository
-                        .findByUserId(
-                                appointment
-                                        .getDoctor()
-                                        .getUser()
-                                        .getId()
+        UserProfile doctorProfile = userProfileRepository
+                .findByUserId(
+                        appointment.getDoctor().getUser().getId()
+                )
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "Doctor profile not found"
                         )
-                        .orElseThrow(() ->
-                                new IllegalArgumentException(
-                                        "Doctor profile not found"
-                                )
-                        );
+                );
 
-        String doctorName =
-                doctorProfile.getFirstName()
-                        + " "
-                        + doctorProfile.getLastName();
+        UserProfile patientProfile = userProfileRepository
+                .findByUserId(
+                        appointment.getPatient().getId()
+                )
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "Patient profile not found"
+                        )
+                );
+
+        String doctorName = doctorProfile.getFirstName()
+                + " "
+                + doctorProfile.getLastName();
+
+        String patientName = patientProfile.getFirstName()
+                + " "
+                + patientProfile.getLastName();
 
         return new AppointmentResponse(
                 appointment.getId(),
                 appointment.getPatient().getId(),
                 appointment.getDoctor().getId(),
                 doctorName,
+                patientName,
                 appointment.getStartDateTime(),
                 appointment.getEndDateTime(),
                 appointment.getStatus(),
@@ -553,6 +588,7 @@ public class AppointmentService {
                 appointment.getUpdatedAt()
         );
     }
+
 
     @Transactional(readOnly = true)
     public AppointmentResponse findById(

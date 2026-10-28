@@ -32,6 +32,7 @@ public class WaitlistAllocationProcessor {
     private final DoctorRepository doctorRepository;
     private final AppointmentEventService appointmentEventService;
     private final PersistentNotificationService persistentNotificationService;
+    private final AuditLogService auditLogService;
 
     @Transactional
     public void processJob(Long jobId) {
@@ -138,6 +139,21 @@ public class WaitlistAllocationProcessor {
         match.setStatus(WaitlistStatus.MATCHED);
         match.setMatchedAppointment(savedAppointment);
         waitlistRepository.save(match);
+
+        // Record the automatic waitlist allocation in the main audit log.
+        auditLogService.log(
+                match.getPatient(),
+                "AUTO_ALLOCATE_WAITLIST_APPOINTMENT",
+                "APPOINTMENT",
+                savedAppointment.getId(),
+                "Appointment automatically allocated from the waitlist. "
+                        + "Original cancelled appointment ID: "
+                        + cancelledAppointment.getId()
+                        + ", waitlist entry ID: "
+                        + match.getId()
+                        + ", doctor ID: "
+                        + doctor.getId()
+        );
 
         // Record the allocation event.
         appointmentEventService.recordWaitlistEvent(
