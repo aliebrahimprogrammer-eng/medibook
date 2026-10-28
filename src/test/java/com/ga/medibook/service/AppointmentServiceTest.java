@@ -30,6 +30,10 @@ import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @ExtendWith(MockitoExtension.class)
 class AppointmentServiceTest {
@@ -60,6 +64,25 @@ class AppointmentServiceTest {
 
     @InjectMocks
     private AppointmentService appointmentService;
+
+    @BeforeEach
+    void setUpTransactionSynchronization() {
+        TransactionSynchronizationManager.initSynchronization();
+    }
+
+    @AfterEach
+    void cleanUpTransactionSynchronization() {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            for (TransactionSynchronization synchronization :
+                    TransactionSynchronizationManager.getSynchronizations()) {
+                synchronization.afterCompletion(
+                        TransactionSynchronization.STATUS_ROLLED_BACK
+                );
+            }
+
+            TransactionSynchronizationManager.clearSynchronization();
+        }
+    }
 
     @Test
     void shouldRejectAppointmentOutsideDoctorAvailability() {
