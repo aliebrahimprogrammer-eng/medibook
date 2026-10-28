@@ -198,7 +198,7 @@ Multiple API requests or background workers can try to process the same released
 - **Database constraints:** Unique constraints prevent duplicate job records for the same job type and triggering appointment, and duplicate delivery records for the same notification and channel.
 - **Bounded thread pool:** A fixed-size worker pool processes allocation jobs with a bounded queue rather than creating an unbounded number of threads.
 - **Persistent jobs and deliveries:** Work is represented in the database so pending work and failure status can be inspected and retried.
-
+- **ReentrantLock:** Serializes booking threads for the same doctor in this JVM.
 
 ## Security
 MediBook uses Spring Security with JWT authentication.
