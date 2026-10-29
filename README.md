@@ -308,6 +308,10 @@ The tests cover important authentication, security, validation, and appointment 
 
 Concurrency tests use the PostgreSQL test database to exercise database-level claiming behavior. Run `mvn test` before submission and update this section if the final test results differ from the scenarios listed above.
 
+
+## ERD and evidence/demo
+**Google Drive link:** https://drive.google.com/file/d/1E12_K_O2Jjx2FHFuGdnFdxOMdvWkzHef/view?usp=sharing
+
 ## Frontend Setup
 
 The MediBook frontend is maintained in a separate repository:
