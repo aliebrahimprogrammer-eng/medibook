@@ -1,0 +1,162 @@
+
+<div class="profile-page">
+  <header class="topbar">
+    <a class="brand" routerLink="/">
+      <span class="brand-icon">+</span>
+      MediBook
+    </a>
+
+    <button class="back-button" type="button" (click)="goBack()">
+      Back to dashboard
+    </button>
+  </header>
+
+  <main class="content">
+    <p class="eyebrow">ACCOUNT SETTINGS</p>
+    <h1>My Profile</h1>
+    <p class="subtitle">
+      Manage your personal information and profile picture.
+    </p>
+
+    @if (isLoading()) {
+      <div class="message-card">Loading your profile...</div>
+    } @else {
+      @if (errorMessage()) {
+        <div class="alert error" role="alert">{{ errorMessage() }}</div>
+      }
+
+      @if (successMessage()) {
+        <div class="alert success" role="status">{{ successMessage() }}</div>
+      }
+
+      <section class="profile-card">
+        <div class="section-heading">
+          <div>
+            <h2>Profile picture</h2>
+            <p>Use a JPEG or PNG image up to 5 MB.</p>
+          </div>
+        </div>
+
+        <div class="picture-section">
+          @if (imagePreview(); as preview) {
+            <img class="avatar" [src]="preview" alt="Selected profile picture" />
+          } @else if (profilePictureSrc; as pictureUrl) {
+            <img class="avatar" [src]="pictureUrl" alt="Your profile picture" />
+          } @else {
+            <div class="avatar avatar-placeholder">{{ initials }}</div>
+          }
+
+          <div class="picture-controls">
+            <label class="file-label" for="profile-picture">
+              Choose image
+            </label>
+
+            <input
+              id="profile-picture"
+              class="file-input"
+              type="file"
+              accept="image/jpeg,image/png"
+              (change)="onFileSelected($event)"
+            />
+
+            @if (selectedFile(); as file) {
+              <p class="file-name">{{ file.name }}</p>
+              <button
+                class="primary-button"
+                type="button"
+                [disabled]="isUploading()"
+                (click)="uploadPicture()"
+              >
+                {{ isUploading() ? 'Uploading...' : 'Upload picture' }}
+              </button>
+            }
+          </div>
+        </div>
+      </section>
+
+      <section class="profile-card">
+        <div class="section-heading">
+          <div>
+            <h2>Personal information</h2>
+            <p>Update the information associated with your account.</p>
+          </div>
+        </div>
+
+        <form (ngSubmit)="saveProfile()" #profileForm="ngForm">
+          <div class="form-grid">
+            <div class="field">
+              <label for="firstName">First name</label>
+              <input
+                id="firstName"
+                name="firstName"
+                type="text"
+                [(ngModel)]="firstName"
+                required
+                maxlength="100"
+                autocomplete="given-name"
+              />
+            </div>
+
+            <div class="field">
+              <label for="lastName">Last name</label>
+              <input
+                id="lastName"
+                name="lastName"
+                type="text"
+                [(ngModel)]="lastName"
+                required
+                maxlength="100"
+                autocomplete="family-name"
+              />
+            </div>
+
+            <div class="field">
+              <label for="email">Email address</label>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                [value]="profile()?.email ?? ''"
+                readonly
+              />
+              <small>Email cannot be changed from this form.</small>
+            </div>
+
+            <div class="field">
+              <label for="phone">Phone number</label>
+              <input
+                id="phone"
+                name="phone"
+                type="tel"
+                [(ngModel)]="phone"
+                maxlength="30"
+                autocomplete="tel"
+              />
+            </div>
+
+            <div class="field">
+              <label for="role">Account role</label>
+              <input
+                id="role"
+                name="role"
+                type="text"
+                [value]="profile()?.role ?? ''"
+                readonly
+              />
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button
+              class="primary-button"
+              type="submit"
+              [disabled]="isSaving() || profileForm.invalid"
+            >
+              {{ isSaving() ? 'Saving...' : 'Save changes' }}
+            </button>
+          </div>
+        </form>
+      </section>
+    }
+  </main>
+</div>

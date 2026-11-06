@@ -1,0 +1,146 @@
+
+<div class="page">
+  <header class="topbar">
+    <a class="brand" routerLink="/patient">
+      <span class="brand-icon">+</span>
+      MediBook
+    </a>
+
+    <a class="back-link" routerLink="/patient">← Dashboard</a>
+  </header>
+
+  <main class="content">
+    <p class="eyebrow">PATIENT PORTAL</p>
+    <h1>Find your doctor</h1>
+    <p class="subtitle">
+      Search our directory to find the right healthcare professional.
+    </p>
+
+    <form class="search-panel" (ngSubmit)="search()">
+      <div class="field">
+        <label for="doctor-name">Doctor's name</label>
+        <input
+          id="doctor-name"
+          name="doctorName"
+          type="text"
+          [(ngModel)]="searchName"
+          placeholder="Search by name"
+        />
+      </div>
+
+      
+        <div class="field">
+        <label for="specialization">Specialization</label>
+
+        <select
+            id="specialization"
+            name="specialization"
+            [(ngModel)]="searchSpecialization"
+            (ngModelChange)="search()"
+            [disabled]="isLoadingSpecializations()"
+        >
+            <option value="">All specializations</option>
+
+            @for (specialization of specializations(); track specialization.id) {
+            <option [value]="specialization.name">
+                {{ specialization.name }}
+            </option>
+            }
+        </select>
+
+        @if (isLoadingSpecializations()) {
+            <small>Loading specializations...</small>
+        }
+
+        @if (specializationError()) {
+            <small class="error-message">{{ specializationError() }}</small>
+        }
+        </div>
+
+
+      <button class="search-button" type="submit" [disabled]="isLoading()">
+        {{ isLoading() ? 'Searching...' : 'Search doctors' }}
+      </button>
+    </form>
+
+    <div class="results-heading">
+      <h2>Available doctors</h2>
+      @if (!isLoading()) {
+        <span>{{ totalElements() }} results</span>
+      }
+    </div>
+
+    @if (isLoading()) {
+      <p class="state-message">Loading doctors...</p>
+    } @else if (errorMessage()) {
+      <p class="error-message" role="alert">{{ errorMessage() }}</p>
+      <button class="secondary-button" (click)="loadDoctors()">
+        Try again
+      </button>
+    } @else if (doctors().length === 0) {
+      <section class="empty-state">
+        <h3>No doctors found</h3>
+        <p>Try a different name or specialization.</p>
+      </section>
+    } @else {
+      <div class="doctor-grid">
+        @for (doctor of doctors(); track doctor.id) {
+          <article class="doctor-card">
+            <div class="doctor-avatar">
+              {{ doctor.firstName.charAt(0) }}{{ doctor.lastName.charAt(0) }}
+            </div>
+
+            <p class="specialty">
+              {{ doctor.specializationName || 'General practice' }}
+            </p>
+
+            <h3>Dr. {{ doctor.firstName }} {{ doctor.lastName }}</h3>
+
+            @if (doctor.bio) {
+              <p class="doctor-bio">{{ doctor.bio }}</p>
+            } @else {
+              <p class="doctor-bio">Healthcare professional</p>
+            }
+
+            <div class="doctor-details">
+              <span>License</span>
+              <span>{{ doctor.licenseNumber }}</span>
+            </div>
+
+            <button
+                class="book-button"
+                type="button"
+                [routerLink]="['/patient/book', doctor.id]"
+                >
+                Book appointment
+            </button>
+          </article>
+        }
+      </div>
+
+      @if (totalPages() > 1) {
+        <nav class="pagination" aria-label="Doctor pages">
+          <button
+            class="secondary-button"
+            type="button"
+            (click)="previousPage()"
+            [disabled]="currentPage() === 0 || isLoading()"
+          >
+            Previous
+          </button>
+
+          <span>Page {{ currentPage() + 1 }} of {{ totalPages() }}</span>
+
+          <button
+            class="secondary-button"
+            type="button"
+            (click)="nextPage()"
+            [disabled]="currentPage() + 1 >= totalPages() || isLoading()"
+          >
+            Next
+          </button>
+        </nav>
+      }
+    }
+  </main>
+</div>

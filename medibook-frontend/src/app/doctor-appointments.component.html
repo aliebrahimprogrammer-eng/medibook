@@ -1,0 +1,227 @@
+
+<div class="appointments-page">
+  <!-- Top navigation -->
+  <header class="topbar">
+    <a routerLink="/doctor" class="brand">
+      <span class="brand-icon">+</span>
+      <span>MediBook</span>
+    </a>
+
+    <a routerLink="/doctor" class="back-link">
+      ← Back to Dashboard
+    </a>
+  </header>
+
+  <main class="content">
+    <!-- Page heading -->
+    <div class="eyebrow">DOCTOR PORTAL</div>
+    <h1>My Appointments</h1>
+
+    <p class="subtitle">
+      Review your appointments and manage their status.
+    </p>
+
+    <!-- Success message -->
+    @if (successMessage()) {
+      <div class="message success-message" role="status">
+        {{ successMessage() }}
+      </div>
+    }
+
+    <!-- Error message -->
+    @if (errorMessage()) {
+      <div class="message error-message" role="alert">
+        {{ errorMessage() }}
+      </div>
+
+      <button
+        type="button"
+        class="primary-button"
+        (click)="loadAppointments(currentPage())"
+        [disabled]="isLoading()"
+      >
+        Try Again
+      </button>
+    }
+
+    <!-- Loading state -->
+    @if (isLoading()) {
+      <div class="empty-state">
+        <p>Loading your appointments...</p>
+      </div>
+    } @else {
+      <div class="result-count">
+        {{ totalElements() }}
+        {{ totalElements() === 1 ? 'appointment' : 'appointments' }}
+        found
+      </div>
+
+      <!-- Appointment list -->
+      @if (appointments().length > 0) {
+        <div class="appointment-list">
+          @for (appointment of appointments(); track appointment.id) {
+            <article class="appointment-card">
+              <!-- Card heading -->
+              <div class="card-header">
+                <div>
+                  <p class="reference">
+                    Appointment #{{ appointment.id }}
+                  </p>
+
+                  <h2>{{ appointment.patientName }}</h2>
+                </div>
+
+                <span
+                  class="status"
+                  [class.status-pending]="appointment.status === 'PENDING'"
+                  [class.status-confirmed]="appointment.status === 'CONFIRMED'"
+                  [class.status-cancelled]="appointment.status === 'CANCELLED'"
+                  [class.status-completed]="appointment.status === 'COMPLETED'"
+                >
+                  {{ appointment.status }}
+                </span>
+              </div>
+
+              <!-- Appointment information -->
+              <div class="appointment-details">
+                <div>
+                  <span class="detail-label">Date</span>
+                  <strong>
+                    {{ appointment.startDateTime | date: 'mediumDate' }}
+                  </strong>
+                </div>
+
+                <div>
+                  <span class="detail-label">Start time</span>
+                  <strong>
+                    {{ appointment.startDateTime | date: 'shortTime' }}
+                  </strong>
+                </div>
+
+                <div>
+                  <span class="detail-label">End time</span>
+                  <strong>
+                    {{ appointment.endDateTime | date: 'shortTime' }}
+                  </strong>
+                </div>
+              </div>
+
+              <!-- Appointment reason -->
+              @if (appointment.reason) {
+                <div class="reason">
+                  <span class="detail-label">Reason for visit</span>
+                  <p>{{ appointment.reason }}</p>
+                </div>
+              }
+
+              <!-- PENDING: Confirm and Cancel only -->
+              @if (appointment.status === 'PENDING') {
+                <div class="appointment-actions">
+                  <button
+                    type="button"
+                    class="action-button confirm-button"
+                    [disabled]="isUpdating() !== null"
+                    (click)="updateStatus(appointment, 'CONFIRMED')"
+                  >
+                    Confirm
+                  </button>
+
+                  <button
+                    type="button"
+                    class="action-button cancel-button"
+                    [disabled]="isUpdating() !== null"
+                    (click)="updateStatus(appointment, 'CANCELLED')"
+                  >
+                    Cancel
+                  </button>
+
+                  @if (isUpdating() === appointment.id) {
+                    <span class="updating-label">
+                      Updating...
+                    </span>
+                  }
+                </div>
+              }
+
+              <!-- CONFIRMED: Complete and Cancel only -->
+              @if (appointment.status === 'CONFIRMED') {
+                <div class="appointment-actions">
+                  <button
+                    type="button"
+                    class="action-button complete-button"
+                    [disabled]="isUpdating() !== null"
+                    (click)="updateStatus(appointment, 'COMPLETED')"
+                  >
+                    Complete
+                  </button>
+
+                  <button
+                    type="button"
+                    class="action-button cancel-button"
+                    [disabled]="isUpdating() !== null"
+                    (click)="updateStatus(appointment, 'CANCELLED')"
+                  >
+                    Cancel
+                  </button>
+
+                  @if (isUpdating() === appointment.id) {
+                    <span class="updating-label">
+                      Updating...
+                    </span>
+                  }
+                </div>
+              }
+
+              <!-- COMPLETED and CANCELLED: no action buttons -->
+            </article>
+          }
+        </div>
+
+        <!-- Pagination -->
+        @if (totalPages() > 1) {
+          <div class="pagination">
+            <button
+              type="button"
+              (click)="previousPage()"
+              [disabled]="currentPage() === 0 || isLoading()"
+            >
+              Previous
+            </button>
+
+            <span>
+              Page {{ currentPage() + 1 }} of {{ totalPages() }}
+            </span>
+
+            <button
+              type="button"
+              (click)="nextPage()"
+              [disabled]="currentPage() + 1 >= totalPages() || isLoading()"
+            >
+              Next
+            </button>
+          </div>
+        }
+      } @else {
+        <!-- Empty state -->
+        <div class="empty-state">
+          <div class="empty-icon">□</div>
+          <h2>No appointments found</h2>
+
+          <p>
+            Your appointments will appear here when patients book
+            appointments with you.
+          </p>
+
+          <button
+            type="button"
+            class="primary-button"
+            (click)="loadAppointments(currentPage())"
+            [disabled]="isLoading()"
+          >
+            Refresh Appointments
+          </button>
+        </div>
+      }
+    }
+  </main>
+</div>

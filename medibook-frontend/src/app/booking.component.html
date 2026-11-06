@@ -1,0 +1,193 @@
+
+<div class="booking-page">
+  <header class="topbar">
+    <a class="brand" routerLink="/patient">
+      <span class="brand-icon">+</span>
+      MediBook
+    </a>
+
+    <a class="back-link" routerLink="/patient/doctors">
+      ← Back to doctors
+    </a>
+  </header>
+
+  <main class="content">
+    <p class="eyebrow">PATIENT PORTAL</p>
+    <h1>Book an appointment</h1>
+
+    @if (doctor(); as currentDoctor) {
+      <section class="doctor-summary">
+        <h2>
+          Dr. {{ currentDoctor.firstName }}
+          {{ currentDoctor.lastName }}
+        </h2>
+
+        <p>{{ currentDoctor.specializationName }}</p>
+
+        @if (currentDoctor.bio) {
+          <p>{{ currentDoctor.bio }}</p>
+        }
+      </section>
+    }
+
+    @if (isLoading()) {
+      <p>Loading available appointments...</p>
+    } @else {
+      @if (errorMessage()) {
+        <p class="error-message" role="alert">
+          {{ errorMessage() }}
+        </p>
+      }
+
+      @if (successMessage()) {
+        <p class="success-message" role="status">
+          {{ successMessage() }}
+        </p>
+      }
+
+      @if (showWaitlistPrompt()) {
+        <section class="waitlist-prompt" role="alert">
+          <h2>This appointment is already booked</h2>
+
+          <p>
+            Another patient has booked this time. Would you like
+            to join the waitlist for your preferred appointment
+            time?
+          </p>
+
+          <p>
+            If a suitable appointment becomes available, your
+            waitlist request can be considered by the system.
+          </p>
+
+          <div class="waitlist-actions">
+            <button
+              type="button"
+              class="join-waitlist-button"
+              [disabled]="isJoiningWaitlist()"
+              (click)="joinWaitlist()"
+            >
+              {{
+                isJoiningWaitlist()
+                  ? 'Joining...'
+                  : 'Yes, Join Waitlist'
+              }}
+            </button>
+
+            <button
+              type="button"
+              class="choose-another-button"
+              (click)="dismissWaitlistPrompt()"
+            >
+              Choose Another Slot
+            </button>
+          </div>
+        </section>
+      }
+
+      @if (availableDates().length === 0) {
+        <section class="empty-state">
+          <h2>No upcoming availability</h2>
+          <p>
+            This doctor has no available future appointment slots
+            listed right now.
+          </p>
+        </section>
+      } @else {
+        <form
+          class="booking-form"
+          (ngSubmit)="bookAppointment()"
+        >
+          <div class="field">
+            <label for="appointment-date">
+              1. Select a date
+            </label>
+
+            <select
+              id="appointment-date"
+              name="appointmentDate"
+              [(ngModel)]="selectedDate"
+              (ngModelChange)="onDateChange()"
+              required
+            >
+              <option value="">Choose a date</option>
+
+              @for (date of availableDates(); track date) {
+                <option [value]="date">
+                  {{ date + 'T12:00:00' | date:'EEEE, MMM d, y' }}
+                </option>
+              }
+            </select>
+          </div>
+
+          @if (selectedDate) {
+            <div class="field">
+              <label for="appointment-time">
+                2. Select a 30-minute time slot
+              </label>
+
+              <select
+                id="appointment-time"
+                name="appointmentTime"
+                [(ngModel)]="selectedSlotId"
+                (ngModelChange)="onSlotChange()"
+                required
+              >
+                <option value="">Choose a time</option>
+
+                @for (
+                  slot of slotsForSelectedDate();
+                  track slot.id
+                ) {
+                  <option [value]="slot.id">
+                    {{ slot.startDateTime | date:'h:mm a' }}
+                    –
+                    {{ slot.endDateTime | date:'h:mm a' }}
+                  </option>
+                }
+              </select>
+
+              @if (slotsForSelectedDate().length === 0) {
+                <small>No available slots for this date.</small>
+              }
+            </div>
+          }
+
+          <div class="field">
+            <label for="reason">
+              Reason for appointment (optional)
+            </label>
+
+            <textarea
+              id="reason"
+              name="reason"
+              [(ngModel)]="reason"
+              maxlength="500"
+              rows="4"
+              placeholder="Briefly describe the reason for your visit"
+            ></textarea>
+
+            <small>{{ reason.length }}/500 characters</small>
+          </div>
+
+          <button
+            type="submit"
+            class="book-button"
+            [disabled]="
+              isBooking() ||
+              isJoiningWaitlist() ||
+              !selectedDate ||
+              !selectedSlotId
+            "
+          >
+            {{
+              isBooking()
+                ? 'Booking...'
+                : 'Confirm appointment'
+            }}
+          </button>
+        </form>
+      }
+    }
+  </main>
+</div>

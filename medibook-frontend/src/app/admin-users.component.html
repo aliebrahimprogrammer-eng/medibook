@@ -1,0 +1,202 @@
+
+<div class="admin-page">
+  <header class="topbar">
+    <a class="brand" routerLink="/admin">
+      <span class="brand-icon">+</span>
+      MediBook
+      <span class="portal-label">ADMIN</span>
+    </a>
+
+    <a class="back-link" routerLink="/admin">← Admin Dashboard</a>
+  </header>
+
+  <main class="content">
+    <p class="eyebrow">ADMINISTRATION</p>
+    <h1>User Management</h1>
+    <p class="subtitle">
+      Review registered accounts, manage roles, and control account access.
+    </p>
+
+    <div class="stats-grid">
+      <article class="stat-card">
+        <span class="stat-label">Total users</span>
+        <strong>{{ users().length }}</strong>
+        <span class="stat-description">Registered accounts</span>
+      </article>
+
+      <article class="stat-card">
+        <span class="stat-label">Active accounts</span>
+        <strong>{{ activeCount() }}</strong>
+        <span class="stat-description">Currently active</span>
+      </article>
+
+      <article class="stat-card">
+        <span class="stat-label">Inactive accounts</span>
+        <strong>{{ inactiveCount() }}</strong>
+        <span class="stat-description">Deactivated accounts</span>
+      </article>
+    </div>
+
+    @if (successMessage()) {
+      <div class="message success-message" role="status">
+        {{ successMessage() }}
+      </div>
+    }
+
+    @if (errorMessage()) {
+      <div class="message error-message" role="alert">
+        {{ errorMessage() }}
+        <button type="button" class="retry-button" (click)="loadUsers()"
+          [disabled]="isLoading()">Retry</button>
+      </div>
+    }
+
+    <section class="users-card">
+      <div class="users-heading">
+        <div>
+          <h2>Registered users</h2>
+          <p>Search accounts and manage access permissions.</p>
+        </div>
+
+        <button class="refresh-button" type="button" (click)="loadUsers()"
+          [disabled]="isLoading()">
+          ↻ Refresh
+        </button>
+      </div>
+
+      <div class="filters">
+        <div class="search-field">
+          <label for="userSearch">Search users</label>
+          <input
+            id="userSearch"
+            type="search"
+            placeholder="Search by email or user ID..."
+            [ngModel]="searchTerm()"
+            (ngModelChange)="setSearchTerm($event)"
+          />
+        </div>
+
+        <div class="filter-field">
+          <label for="roleFilter">Role</label>
+          <select id="roleFilter" [ngModel]="roleFilter()"
+            (ngModelChange)="setRoleFilter($event)">
+            <option value="ALL">All roles</option>
+            <option value="PATIENT">Patient</option>
+            <option value="DOCTOR">Doctor</option>
+            <option value="ADMIN">Admin</option>
+          </select>
+        </div>
+
+        <div class="filter-field">
+          <label for="statusFilter">Account status</label>
+          <select id="statusFilter" [ngModel]="statusFilter()"
+            (ngModelChange)="setStatusFilter($event)">
+            <option value="ALL">All statuses</option>
+            <option value="ACTIVE">Active</option>
+            <option value="INACTIVE">Inactive</option>
+          </select>
+        </div>
+      </div>
+
+      @if (isLoading()) {
+        <div class="state-card">
+          <div class="spinner"></div>
+          <p>Loading registered users...</p>
+        </div>
+      } @else if (filteredUsers().length > 0) {
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>User</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th>Email verified</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              @for (user of filteredUsers(); track user.id) {
+                <tr>
+                  <td>
+                    <div class="user-cell">
+                      <span class="user-avatar">{{ user.email.charAt(0).toUpperCase() }}</span>
+                      <div class="user-details">
+                        <strong>{{ user.email }}</strong>
+                        <small>User #{{ user.id }}</small>
+                      </div>
+                    </div>
+                  </td>
+
+                  <td>
+                    <span class="role-badge" [attr.data-role]="user.role">
+                      {{ user.role }}
+                    </span>
+                  </td>
+
+                  <td>
+                    <span class="status-badge" [attr.data-status]="user.status">
+                      {{ user.status }}
+                    </span>
+                  </td>
+
+                  <td>
+                    <span [class.verified]="user.emailVerified"
+                      [class.unverified]="!user.emailVerified">
+                      {{ user.emailVerified ? 'Verified' : 'Not verified' }}
+                    </span>
+                  </td>
+
+                  <td>
+                    <div class="actions-cell">
+                      <div class="role-editor">
+                        <select
+                          [ngModel]="roleChanges()[user.id]"
+                          (ngModelChange)="setRoleChange(user.id, $event)"
+                          [disabled]="busyUserId() !== null"
+                          [attr.aria-label]="'Change role for ' + user.email">
+                          @for (role of roles; track role) {
+                            <option [value]="role">{{ role }}</option>
+                          }
+                        </select>
+
+                        <button type="button" class="save-button"
+                          (click)="saveRole(user)"
+                          [disabled]="busyUserId() !== null || roleChanges()[user.id] === user.role">
+                          Save role
+                        </button>
+                      </div>
+
+                      <button type="button"
+                        [class.deactivate-button]="user.status === 'ACTIVE'"
+                        [class.reactivate-button]="user.status === 'INACTIVE'"
+                        (click)="toggleStatus(user)"
+                        [disabled]="busyUserId() !== null">
+                        @if (busyUserId() === user.id) {
+                          Working...
+                        } @else {
+                          {{ user.status === 'ACTIVE' ? 'Deactivate' : 'Reactivate' }}
+                        }
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <div class="table-footer">
+          Showing {{ filteredUsers().length }} of {{ users().length }} users
+        </div>
+      } @else {
+        <div class="state-card empty-state">
+          <span class="empty-icon">⌕</span>
+          <h3>No users found</h3>
+          <p>Try changing your search term or filters.</p>
+        </div>
+      }
+    </section>
+  </main>
+</div>

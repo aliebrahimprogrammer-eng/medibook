@@ -1,0 +1,178 @@
+
+<div class="audit-page">
+  <header class="topbar">
+    <a class="brand" routerLink="/admin">
+      <span class="brand-icon">+</span>
+      MediBook
+      <span class="portal-label">ADMIN</span>
+    </a>
+
+    <a class="back-link" routerLink="/admin">← Admin Dashboard</a>
+  </header>
+
+  <main class="content">
+    <p class="eyebrow">ADMINISTRATION / SECURITY</p>
+    <h1>Audit Logs</h1>
+    <p class="subtitle">
+      Review recorded system activity and trace administrative actions.
+    </p>
+
+    <section class="logs-card">
+      <div class="logs-heading">
+        <div class="heading-icon">↻</div>
+        <div class="heading-copy">
+          <h2>Activity history</h2>
+          <p>Records are displayed newest first.</p>
+        </div>
+        <button
+          type="button"
+          class="refresh-button"
+          (click)="loadLogs()"
+          [disabled]="isLoading()"
+        >
+          ↻ Refresh
+        </button>
+      </div>
+
+      <form class="search-bar" (ngSubmit)="search()">
+        <label class="search-input">
+          <span class="visually-hidden">Search audit logs</span>
+          <span class="search-icon">⌕</span>
+          <input
+            type="search"
+            name="search"
+            placeholder="Search activity, user, entity, or description..."
+            [(ngModel)]="searchInput"
+          />
+        </label>
+
+        <button type="submit" class="search-button" [disabled]="isLoading()">
+          Search
+        </button>
+
+        @if (appliedSearch) {
+          <button
+            type="button"
+            class="clear-button"
+            (click)="clearSearch()"
+            [disabled]="isLoading()"
+          >
+            Clear
+          </button>
+        }
+      </form>
+
+      <div class="results-summary">
+        <span>
+          {{ totalElements() }} {{ totalElements() === 1 ? 'record' : 'records' }}
+          @if (appliedSearch) {
+            <span> matching "{{ appliedSearch }}"</span>
+          }
+        </span>
+        <span class="security-label">Admin access only</span>
+      </div>
+
+      @if (errorMessage()) {
+        <div class="error-message" role="alert">
+          <span>{{ errorMessage() }}</span>
+          <button type="button" (click)="loadLogs()" [disabled]="isLoading()">
+            Retry
+          </button>
+        </div>
+      }
+
+      @if (isLoading()) {
+        <div class="state-card">
+          <div class="spinner"></div>
+          <p>Loading audit history...</p>
+        </div>
+      } @else if (logs().length > 0) {
+        <div class="log-list">
+          @for (log of logs(); track log.id) {
+            <article class="log-entry">
+              <div class="timeline">
+                <span class="timeline-dot"></span>
+              </div>
+
+              <div class="log-main">
+                <div class="log-topline">
+                  <span class="action-badge">{{ log.action }}</span>
+                  <time>{{ log.createdAt | date:'medium' }}</time>
+                </div>
+
+                <p class="description">
+                  {{ log.description || 'No description provided.' }}
+                </p>
+
+                <div class="metadata">
+                  <span>
+                    <span class="metadata-label">Performed by</span>
+                    <strong>{{ log.userEmail }}</strong>
+                  </span>
+                  <span>
+                    <span class="metadata-label">Role</span>
+                    <strong>{{ log.userRole }}</strong>
+                  </span>
+                  <span>
+                    <span class="metadata-label">Entity</span>
+                    <strong>
+                      {{ log.entityType || '—' }}
+                      @if (log.entityId !== null && log.entityId !== undefined) {
+                        #{{ log.entityId }}
+                      }
+                    </strong>
+                  </span>
+                  <span>
+                    <span class="metadata-label">Log ID</span>
+                    <strong>#{{ log.id }}</strong>
+                  </span>
+                </div>
+              </div>
+            </article>
+          }
+        </div>
+
+        @if (totalPages() > 1) {
+          <div class="pagination">
+            <button
+              type="button"
+              class="page-button"
+              (click)="previousPage()"
+              [disabled]="currentPage() === 0 || isLoading()"
+            >
+              ← Previous
+            </button>
+
+            <span>Page {{ currentPage() + 1 }} of {{ totalPages() }}</span>
+
+            <button
+              type="button"
+              class="page-button"
+              (click)="nextPage()"
+              [disabled]="currentPage() + 1 >= totalPages() || isLoading()"
+            >
+              Next →
+            </button>
+          </div>
+        }
+      } @else {
+        <div class="state-card empty-state">
+          <div class="empty-icon">⌕</div>
+          <h3>No audit records found</h3>
+          <p>
+            @if (appliedSearch) {
+              Try another search term or clear your search.
+            } @else {
+              System activity will appear here when audit events have been recorded.
+            }
+          </p>
+          @if (appliedSearch) {
+            <button type="button" class="clear-button" (click)="clearSearch()">
+              Clear search
+            </button>
+          }
+        </div>
+      }
+    </section>
+  </main>
+</div>

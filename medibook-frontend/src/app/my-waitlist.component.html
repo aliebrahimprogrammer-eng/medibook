@@ -1,0 +1,151 @@
+
+<div class="waitlist-page">
+  <header class="topbar">
+    <a class="brand" routerLink="/patient">
+      <span class="brand-icon">+</span>
+      MediBook
+    </a>
+
+    <a class="back-link" routerLink="/patient">
+      ← Back to dashboard
+    </a>
+  </header>
+
+  <main class="content">
+    <p class="eyebrow">PATIENT PORTAL</p>
+    <h1>My Waitlist</h1>
+    <p class="subtitle">
+      Manage your requests for preferred appointment times.
+    </p>
+
+    @if (errorMessage()) {
+      <p class="error-message" role="alert">
+        {{ errorMessage() }}
+      </p>
+    }
+
+    @if (successMessage()) {
+      <p class="success-message" role="status">
+        {{ successMessage() }}
+      </p>
+    }
+
+    @if (isLoading()) {
+      <section class="state-card">
+        <p>Loading your waitlist...</p>
+      </section>
+    } @else if (entries().length === 0) {
+      <section class="state-card empty-state">
+        <div class="empty-icon">◷</div>
+        <h2>Your waitlist is empty</h2>
+        <p>
+          When an appointment time is already booked, you can
+          join the waitlist from the booking page.
+        </p>
+        <a class="primary-link" routerLink="/patient/doctors">
+          Find a doctor
+        </a>
+      </section>
+    } @else {
+      <div class="waitlist-summary">
+        <div>
+          <strong>{{ entries().length }}</strong>
+          <span>
+            {{ entries().length === 1 ? 'request' : 'requests' }}
+          </span>
+        </div>
+
+        <button
+          type="button"
+          class="refresh-button"
+          (click)="loadWaitlist()"
+          [disabled]="isLoading() || cancellingEntryId() !== null"
+        >
+          Refresh
+        </button>
+      </div>
+
+      <div class="waitlist-list">
+        @for (entry of entries(); track entry.id) {
+          <article class="waitlist-card">
+            <div class="card-heading">
+              <div>
+                <p class="request-label">
+                  WAITLIST REQUEST #{{ entry.id }}
+                </p>
+                <h2>{{ entry.doctorName }}</h2>
+              </div>
+
+              <span
+                class="status"
+                [class.status-waiting]="entry.status === 'WAITING'"
+                [class.status-cancelled]="entry.status === 'CANCELLED'"
+                [class.status-matched]="entry.status === 'MATCHED'"
+              >
+                {{ entry.status }}
+              </span>
+            </div>
+
+            <div class="appointment-details">
+              <div class="detail">
+                <span class="detail-label">Preferred date</span>
+                <strong>
+                  {{
+                    entry.preferredStartDateTime
+                      | date:'EEE, MMM d, y'
+                }}
+                </strong>
+              </div>
+
+              <div class="detail">
+                <span class="detail-label">Preferred time</span>
+                <strong>
+                  {{
+                    entry.preferredStartDateTime
+                      | date:'h:mm a'
+                  }}
+                  –
+                  {{
+                    entry.preferredEndDateTime
+                      | date:'h:mm a'
+                  }}
+                </strong>
+              </div>
+
+              <div class="detail">
+                <span class="detail-label">Joined on</span>
+                <strong>
+                  {{ entry.createdAt | date:'MMM d, y, h:mm a' }}
+                </strong>
+              </div>
+
+              @if (entry.matchedAppointmentId !== null) {
+                <div class="detail">
+                  <span class="detail-label">Matched appointment</span>
+                  <strong>#{{ entry.matchedAppointmentId }}</strong>
+                </div>
+              }
+            </div>
+
+            @if (entry.status === 'WAITING') {
+              <div class="card-actions">
+                <button
+                  type="button"
+                  class="cancel-button"
+                  [disabled]="cancellingEntryId() !== null"
+                  (click)="cancelEntry(entry)"
+                >
+                  {{
+                    cancellingEntryId() === entry.id
+                      ? 'Cancelling...'
+                      : 'Cancel request'
+                  }}
+                </button>
+              </div>
+            }
+          </article>
+        }
+      </div>
+    }
+  </main>
+</div>

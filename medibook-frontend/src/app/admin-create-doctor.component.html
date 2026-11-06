@@ -1,0 +1,144 @@
+
+<div class="admin-page">
+  <header class="topbar">
+    <a class="brand" routerLink="/admin">
+      <span class="brand-icon">+</span>
+      MediBook
+    </a>
+
+    <a class="back-link" routerLink="/admin">Back to dashboard</a>
+  </header>
+
+  <main class="content">
+    <p class="eyebrow">ADMINISTRATION</p>
+    <h1>Create Doctor Profile</h1>
+    <p class="subtitle">
+      Link an existing doctor account to a medical specialization and
+      professional profile.
+    </p>
+
+    <section class="info-card">
+      <span class="info-icon">i</span>
+      <p>
+        The user must already exist and have the <strong>DOCTOR</strong>
+        role. If necessary, update the account in
+        <a routerLink="/admin/users">User Management</a> first.
+      </p>
+    </section>
+
+    @if (errorMessage()) {
+      <div class="alert error" role="alert">{{ errorMessage() }}</div>
+    }
+
+    @if (successMessage()) {
+      <div class="alert success" role="status">{{ successMessage() }}</div>
+    }
+
+    @if (isLoading()) {
+      <section class="form-card loading">
+        Loading doctor users and specializations...
+      </section>
+    } @else {
+      <section class="form-card">
+        <div class="section-heading">
+          <h2>Doctor information</h2>
+          <p>Complete the details below to create the doctor profile.</p>
+        </div>
+
+        <form (ngSubmit)="createDoctor()" #doctorForm="ngForm">
+          <div class="field">
+            <label for="userId">Doctor account *</label>
+            <select
+              id="userId"
+              name="userId"
+              [(ngModel)]="userId"
+              required
+            >
+              <option [ngValue]="null" disabled>Select a doctor account</option>
+              @for (user of doctorUsers(); track user.id) {
+                <option [ngValue]="user.id">
+                  {{ user.email }} (User ID: {{ user.id }})
+                </option>
+              }
+            </select>
+
+            @if (doctorUsers().length === 0) {
+              <small>
+                No eligible accounts found.
+                <a routerLink="/admin/users">Open User Management</a>
+              </small>
+            }
+          </div>
+
+          <div class="field">
+            <label for="specializationId">Medical specialization *</label>
+            <select
+              id="specializationId"
+              name="specializationId"
+              [(ngModel)]="specializationId"
+              required
+            >
+              <option [ngValue]="null" disabled>
+                Select a specialization
+              </option>
+              @for (specialization of specializations(); track specialization.id) {
+                <option [ngValue]="specialization.id">
+                  {{ specialization.name }}
+                </option>
+              }
+            </select>
+
+            @if (specializations().length === 0) {
+              <small>
+                No specializations found. Add one before creating a doctor.
+              </small>
+            }
+          </div>
+
+          <div class="field">
+            <label for="licenseNumber">Professional license number *</label>
+            <input
+              id="licenseNumber"
+              name="licenseNumber"
+              type="text"
+              [(ngModel)]="licenseNumber"
+              required
+              maxlength="100"
+              placeholder="Enter license number"
+            />
+          </div>
+
+          <div class="field">
+            <label for="bio">Professional biography</label>
+            <textarea
+              id="bio"
+              name="bio"
+              [(ngModel)]="bio"
+              maxlength="2000"
+              rows="5"
+              placeholder="Describe the doctor's experience and expertise..."
+            ></textarea>
+            <small>{{ bio.length }}/2000 characters</small>
+          </div>
+
+          <div class="form-actions">
+            <a class="secondary-button" routerLink="/admin">Cancel</a>
+
+            <button
+              class="primary-button"
+              type="submit"
+              [disabled]="
+                isSubmitting() ||
+                doctorForm.invalid ||
+                doctorUsers().length === 0 ||
+                specializations().length === 0
+              "
+            >
+              {{ isSubmitting() ? 'Creating profile...' : 'Create doctor profile' }}
+            </button>
+          </div>
+        </form>
+      </section>
+    }
+  </main>
+</div>

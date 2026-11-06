@@ -1,0 +1,115 @@
+<div class="page">
+  <header class="topbar">
+    <a class="brand" href="/">
+      <span class="brand-icon">+</span>
+      <span>MediBook</span>
+    </a>
+    <span class="header-caption">Your health, our priority</span>
+  </header>
+
+  <main class="main-content">
+    <section class="intro">
+      <div class="eyebrow">
+        <span class="status-dot"></span>
+        YOUR HEALTHCARE, SIMPLIFIED
+      </div>
+
+      <h1>Better care starts<br />with <span>MediBook.</span></h1>
+
+      <p class="intro-text">
+        Find the right doctor, book appointments, and manage your
+        healthcare journey — all in one place.
+      </p>
+
+      <div class="benefit">
+        <span class="benefit-icon">✓</span>
+        <div>
+          <strong>Easy appointment booking</strong>
+          <p>Find a suitable doctor and time.</p>
+        </div>
+      </div>
+
+      <div class="benefit">
+        <span class="benefit-icon">✓</span>
+        <div>
+          <strong>Your care, all in one place</strong>
+          <p>Keep track of your upcoming visits.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="login-card">
+      <div class="card-symbol">✚</div>
+      <h2>Welcome back</h2>
+      <p class="card-subtitle">Sign in to your MediBook account</p>
+
+      <form (ngSubmit)="onLogin()">
+        <label for="email">Email address</label>
+        <input
+          pInputText
+          id="email"
+          name="email"
+          type="email"
+          [(ngModel)]="email"
+          placeholder="you@example.com"
+          autocomplete="email"
+          required
+        />
+
+        <div class="password-label">
+          <label for="password">Password</label>
+          <a href="#" (click)="$event.preventDefault()">Forgot password?</a>
+        </div>
+
+        <p-password
+          inputId="password"
+          name="password"
+          [(ngModel)]="password"
+          placeholder="Enter your password"
+          [feedback]="false"
+          [toggleMask]="true"
+          autocomplete="current-password"
+          [fluid]="true"
+          required
+        />
+
+        @if (errorMessage) {
+          <p class="form-message" role="alert">{{ errorMessage }}</p>
+        }
+        @if (successMessage) {
+          <p class="success-message" role="status">
+            {{ successMessage }}
+          </p>
+        }
+
+        <button
+          pButton
+          type="submit"
+          class="login-button"
+          [disabled]="isLoading"
+        >
+          <span pButtonLabel>
+            {{ isLoading ? 'Signing in...' : 'Sign in' }}
+          </span>
+          <span class="button-arrow">→</span>
+        </button>
+      </form>
+
+      <div class="divider"><span>SECURE HEALTHCARE ACCESS</span></div>
+
+      <p class="signup-text">
+        Don't have an account?
+        <a href="#" (click)="$event.preventDefault()">Create an account</a>
+      </p>
+
+      <p class="security-note">
+        <span>▣</span> Your information is handled securely.
+      </p>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <span>© 2026 MediBook</span>
+    <span>Healthcare made simpler.</span>
+  </footer>
+</div>

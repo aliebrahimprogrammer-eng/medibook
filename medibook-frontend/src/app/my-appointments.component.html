@@ -1,0 +1,140 @@
+
+<div class="appointments-page">
+  <header class="topbar">
+    <a class="brand" routerLink="/patient">
+      <span class="brand-icon">+</span>
+      MediBook
+    </a>
+
+    <a class="back-link" routerLink="/patient">
+      ← Back to dashboard
+    </a>
+  </header>
+
+  <main class="content">
+    <p class="eyebrow">PATIENT PORTAL</p>
+    <h1>My appointments</h1>
+    <p class="subtitle">
+      View your bookings and manage upcoming appointments.
+    </p>
+
+    @if (errorMessage()) {
+      <p class="message error-message" role="alert">
+        {{ errorMessage() }}
+      </p>
+    }
+
+    @if (successMessage()) {
+      <p class="message success-message" role="status">
+        {{ successMessage() }}
+      </p>
+    }
+
+    @if (isLoading()) {
+      <section class="empty-state">
+        Loading your appointments...
+      </section>
+    } @else {
+      @if (appointments().length === 0) {
+        <section class="empty-state">
+          <h2>No appointments yet</h2>
+          <p>Your bookings will appear here once you schedule an appointment.</p>
+          <a class="primary-link" routerLink="/patient/doctors">
+            Find a doctor
+          </a>
+        </section>
+      } @else {
+        <p class="result-count">
+          {{ totalElements() }} appointment(s) in total
+        </p>
+
+        <div class="appointment-list">
+          @for (appointment of appointments(); track appointment.id) {
+            <article class="appointment-card">
+              <div class="card-header">
+                <div>
+                  <p class="reference">Appointment #{{ appointment.id }}</p>
+                  <h2>{{ appointment.doctorName }}</h2>
+                </div>
+
+                <span
+                  class="status"
+                  [class.status-pending]="appointment.status === 'PENDING'"
+                  [class.status-confirmed]="appointment.status === 'CONFIRMED'"
+                  [class.status-cancelled]="appointment.status === 'CANCELLED'"
+                  [class.status-completed]="appointment.status === 'COMPLETED'"
+                >
+                  {{ appointment.status }}
+                </span>
+              </div>
+
+              <div class="appointment-details">
+                <div>
+                  <span class="detail-label">Date</span>
+                  <strong>
+                    {{ appointment.startDateTime | date:'EEE, MMM d, y' }}
+                  </strong>
+                </div>
+
+                <div>
+                  <span class="detail-label">Time</span>
+                  <strong>
+                    {{ appointment.startDateTime | date:'h:mm a' }}
+                    –
+                    {{ appointment.endDateTime | date:'h:mm a' }}
+                  </strong>
+                </div>
+              </div>
+
+              @if (appointment.reason) {
+                <div class="reason">
+                  <span class="detail-label">Reason for visit</span>
+                  <p>{{ appointment.reason }}</p>
+                </div>
+              }
+
+              @if (canCancel(appointment)) {
+                <button
+                  type="button"
+                  class="cancel-button"
+                  [disabled]="isCancelling() === appointment.id"
+                  (click)="cancelAppointment(appointment)"
+                >
+                  {{
+                    isCancelling() === appointment.id
+                      ? 'Cancelling...'
+                      : 'Cancel appointment'
+                  }}
+                </button>
+              }
+            </article>
+          }
+        </div>
+
+        @if (totalPages() > 1) {
+          <nav class="pagination" aria-label="Appointment pages">
+            <button
+              type="button"
+              (click)="previousPage()"
+              [disabled]="currentPage() === 0 || isLoading()"
+            >
+              Previous
+            </button>
+
+            <span>
+              Page {{ currentPage() + 1 }} of {{ totalPages() }}
+            </span>
+
+            <button
+              type="button"
+              (click)="nextPage()"
+              [disabled]="currentPage() + 1 >= totalPages() || isLoading()"
+            >
+              Next
+            </button>
+          </nav>
+        }
+      }
+    }
+  </main>
+</div>

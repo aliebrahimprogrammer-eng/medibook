@@ -1,0 +1,216 @@
+
+<div class="availability-page">
+  <header class="topbar">
+    <a routerLink="/doctor" class="brand">
+      <span class="brand-icon">+</span>
+      <span>MediBook</span>
+    </a>
+
+    <a routerLink="/doctor" class="back-link">
+      ← Back to Dashboard
+    </a>
+  </header>
+
+  <main class="content">
+    <div class="eyebrow">DOCTOR PORTAL</div>
+    <h1>Availability Management</h1>
+
+    <p class="subtitle">
+      Manage the dates and times when patients can book appointments with you.
+    </p>
+
+    @if (doctor(); as currentDoctor) {
+      <section class="doctor-summary">
+        <div class="doctor-avatar">
+          {{ currentDoctor.firstName.charAt(0) }}{{ currentDoctor.lastName.charAt(0) }}
+        </div>
+
+        <div>
+          <h2>Dr. {{ currentDoctor.firstName }} {{ currentDoctor.lastName }}</h2>
+          <p>{{ currentDoctor.specializationName }}</p>
+        </div>
+      </section>
+    }
+
+    @if (successMessage()) {
+      <div class="message success-message" role="status">
+        {{ successMessage() }}
+      </div>
+    }
+
+    @if (errorMessage()) {
+      <div class="message error-message" role="alert">
+        {{ errorMessage() }}
+      </div>
+
+      <button
+        type="button"
+        class="secondary-button"
+        (click)="retryLoading()"
+        [disabled]="isLoading()"
+      >
+        Try Again
+      </button>
+    }
+
+    <section class="form-card">
+      <div class="section-heading">
+        <div>
+          <div class="section-eyebrow">NEW TIME SLOT</div>
+          <h2>Add Availability</h2>
+        </div>
+
+        <span class="heading-icon">+</span>
+      </div>
+
+      <p class="form-description">
+        Choose a future start and end time. Slots cannot overlap existing availability.
+      </p>
+
+      <form (ngSubmit)="createAvailability()">
+        <div class="form-grid">
+          <div class="form-field">
+            <label for="startDateTime">Start date and time</label>
+            <input
+              id="startDateTime"
+              name="startDateTime"
+              type="datetime-local"
+              [(ngModel)]="startDateTime"
+              [disabled]="isCreating()"
+              required
+            />
+          </div>
+
+          <div class="form-field">
+            <label for="endDateTime">End date and time</label>
+            <input
+              id="endDateTime"
+              name="endDateTime"
+              type="datetime-local"
+              [(ngModel)]="endDateTime"
+              [disabled]="isCreating()"
+              required
+            />
+          </div>
+        </div>
+
+        <div class="form-footer">
+          <p>All times use your browser's local time.</p>
+
+          <button
+            type="submit"
+            class="primary-button"
+            [disabled]="isCreating() || isLoading() || !doctor()"
+          >
+            @if (isCreating()) {
+              Creating...
+            } @else {
+              + Create Availability
+            }
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <section class="slots-section">
+      <div class="slots-heading">
+        <div>
+          <div class="section-eyebrow">YOUR SCHEDULE</div>
+          <h2>Available Time Slots</h2>
+        </div>
+
+        <span class="slot-count">
+          {{ totalElements() }} {{ totalElements() === 1 ? 'slot' : 'slots' }}
+        </span>
+      </div>
+
+      @if (isLoading()) {
+        <div class="state-card">
+          <div class="loading-indicator"></div>
+          <p>Loading your availability...</p>
+        </div>
+      } @else if (availabilities().length > 0) {
+        <div class="slot-list">
+          @for (slot of availabilities(); track slot.id) {
+            <article class="slot-card">
+              <div class="slot-date-icon">
+                <span>{{ slot.startDateTime | date: 'dd' }}</span>
+                <small>{{ slot.startDateTime | date: 'MMM' }}</small>
+              </div>
+
+              <div class="slot-info">
+                <h3>{{ slot.startDateTime | date: 'EEEE, MMMM d, y' }}</h3>
+
+                <p>
+                  {{ slot.startDateTime | date: 'shortTime' }}
+                  –
+                  {{ slot.endDateTime | date: 'shortTime' }}
+                </p>
+
+                <span class="slot-duration">
+                  {{ slot.startDateTime | date: 'shortDate' }}
+                </span>
+              </div>
+
+              <div class="slot-actions">
+                <span class="available-label">
+                  <span class="available-dot"></span>
+                  Available
+                </span>
+
+                <button
+                  type="button"
+                  class="delete-button"
+                  [disabled]="deletingId() !== null"
+                  (click)="deleteAvailability(slot)"
+                  [attr.aria-label]="'Delete availability slot ' + slot.id"
+                >
+                  @if (deletingId() === slot.id) {
+                    Deleting...
+                  } @else {
+                    Delete
+                  }
+                </button>
+              </div>
+            </article>
+          }
+        </div>
+
+        @if (totalPages() > 1) {
+          <div class="pagination">
+            <button
+              type="button"
+              class="secondary-button"
+              (click)="previousPage()"
+              [disabled]="currentPage() === 0 || isLoading()"
+            >
+              ← Previous
+            </button>
+
+            <span>
+              Page {{ currentPage() + 1 }} of {{ totalPages() }}
+            </span>
+
+            <button
+              type="button"
+              class="secondary-button"
+              (click)="nextPage()"
+              [disabled]="currentPage() + 1 >= totalPages() || isLoading()"
+            >
+              Next →
+            </button>
+          </div>
+        }
+      } @else {
+        <div class="state-card empty-state">
+          <div class="empty-icon">▦</div>
+          <h3>No availability yet</h3>
+          <p>
+            Add your first time slot using the form above. Patients will be able
+            to book appointments during your available times.
+          </p>
+        </div>
+      }
+    </section>
+  </main>
+</div>
