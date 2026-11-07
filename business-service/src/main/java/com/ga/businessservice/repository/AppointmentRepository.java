@@ -1,6 +1,6 @@
 package com.ga.businessservice.repository;
 
-import com.ga.businessservice.model.entity.Appointment;
+import com.ga.businessservice.entity.Appointment;
 import com.ga.businessservice.model.enums.AppointmentStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;

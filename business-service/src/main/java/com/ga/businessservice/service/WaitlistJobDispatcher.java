@@ -1,6 +1,6 @@
 package com.ga.businessservice.service;
 
-import com.ga.businessservice.model.entity.BackgroundJob;
+import com.ga.businessservice.entity.BackgroundJob;
 import com.ga.businessservice.repository.BackgroundJobRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Qualifier;

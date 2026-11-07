@@ -1,6 +1,6 @@
 package com.ga.businessservice.repository;
 
-import com.ga.businessservice.model.entity.Doctor;
+import com.ga.businessservice.entity.Doctor;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;

@@ -1,7 +1,7 @@
 
 package com.ga.businessservice.repository;
 
-import com.ga.businessservice.model.entity.AppointmentWaitlist;
+import com.ga.businessservice.entity.AppointmentWaitlist;
 import com.ga.businessservice.model.enums.WaitlistStatus;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;

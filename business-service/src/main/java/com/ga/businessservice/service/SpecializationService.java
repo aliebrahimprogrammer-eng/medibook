@@ -4,7 +4,7 @@ import com.ga.businessservice.dto.request.SpecializationRequest;
 import com.ga.businessservice.dto.request.SpecializationUpdateRequest;
 import com.ga.businessservice.dto.response.SpecializationResponse;
 import com.ga.businessservice.exception.ResourceConflictException;
-import com.ga.businessservice.model.entity.Specialization;
+import com.ga.businessservice.entity.Specialization;
 import com.ga.businessservice.model.entity.User;
 import com.ga.businessservice.repository.SpecializationRepository;
 import com.ga.businessservice.repository.UserRepository;

@@ -1,6 +1,6 @@
 package com.ga.businessservice.repository;
 
-import com.ga.businessservice.model.entity.Specialization;
+import com.ga.businessservice.entity.Specialization;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

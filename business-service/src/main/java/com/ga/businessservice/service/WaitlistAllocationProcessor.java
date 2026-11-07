@@ -1,10 +1,10 @@
 
 package com.ga.businessservice.service;
 
-import com.ga.businessservice.model.entity.Appointment;
-import com.ga.businessservice.model.entity.AppointmentWaitlist;
-import com.ga.businessservice.model.entity.BackgroundJob;
-import com.ga.businessservice.model.entity.Doctor;
+import com.ga.businessservice.entity.Appointment;
+import com.ga.businessservice.entity.AppointmentWaitlist;
+import com.ga.businessservice.entity.BackgroundJob;
+import com.ga.businessservice.entity.Doctor;
 import com.ga.businessservice.model.enums.AppointmentStatus;
 import com.ga.businessservice.model.enums.WaitlistStatus;
 import com.ga.businessservice.repository.AppointmentRepository;

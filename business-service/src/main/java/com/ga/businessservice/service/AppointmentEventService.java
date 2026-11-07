@@ -1,8 +1,8 @@
 package com.ga.businessservice.service;
 
-import com.ga.businessservice.model.entity.Appointment;
-import com.ga.businessservice.model.entity.AppointmentEvent;
-import com.ga.businessservice.model.entity.AppointmentWaitlist;
+import com.ga.businessservice.entity.Appointment;
+import com.ga.businessservice.entity.AppointmentEvent;
+import com.ga.businessservice.entity.AppointmentWaitlist;
 import com.ga.businessservice.repository.AppointmentEventRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

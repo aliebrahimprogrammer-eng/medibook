@@ -1,7 +1,7 @@
 
 package com.ga.businessservice.repository;
 
-import com.ga.businessservice.model.entity.BackgroundJob;
+import com.ga.businessservice.entity.BackgroundJob;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
