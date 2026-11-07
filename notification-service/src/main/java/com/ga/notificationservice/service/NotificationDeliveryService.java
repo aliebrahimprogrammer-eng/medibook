@@ -4,13 +4,13 @@ package com.ga.notificationservice.service;
 import com.ga.notificationservice.model.entity.Notification;
 import com.ga.notificationservice.model.entity.NotificationDelivery;
 import com.ga.notificationservice.notification.EmailService;
-import com.ga.notificationservice.notification.SseNotificationService;
 import com.ga.notificationservice.repository.NotificationDeliveryRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -29,7 +29,6 @@ public class NotificationDeliveryService {
 
     private final NotificationDeliveryRepository deliveryRepository;
     private final EmailService emailService;
-    private final SseNotificationService sseNotificationService;
 
     @Scheduled(fixedDelay = 10000)
     public void processPendingDeliveries() {
@@ -111,8 +110,8 @@ public class NotificationDeliveryService {
             if ("EMAIL".equals(delivery.getChannel())) {
                 emailService.sendEmail(
                         recipientEmail,
-                        notification.getTitle(),
-                        notification.getMessage()
+                        notification.getEmailSubject(),
+                        notification.getEmailBody()
                 );
             }
         } catch (RuntimeException exception) {
@@ -132,22 +131,6 @@ public class NotificationDeliveryService {
                     exception
             );
             return;
-        }
-
-        // SSE is best-effort. It must not cause a successfully sent email
-        // to be retried.
-        try {
-            sseNotificationService.sendNotification(
-                    recipientEmail,
-                    notification.getTitle() + ": "
-                            + notification.getMessage()
-            );
-        } catch (RuntimeException exception) {
-            log.debug(
-                    "Best-effort SSE notification failed for delivery {}",
-                    deliveryId,
-                    exception
-            );
         }
 
         delivery.setStatus(SENT);

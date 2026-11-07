@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import java.util.UUID;
 
 import java.time.LocalDateTime;
 
@@ -31,7 +32,10 @@ public class Notification {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "user_id", nullable = false)
+    @Column(name = "source_event_id", unique = true)
+    private UUID sourceEventId;
+
+    @Column(name = "user_id")
     private Long userId;
 
     @Column(name = "recipient_email", nullable = false, length = 255)
@@ -51,6 +55,12 @@ public class Notification {
 
     @Column(nullable = false, columnDefinition = "TEXT")
     private String message;
+
+    @Column(name = "email_subject", length = 255)
+    private String emailSubject;
+
+    @Column(name = "email_body", columnDefinition = "TEXT")
+    private String emailBody;
 
     @Column(nullable = false, length = 20)
     private String status = "PENDING";

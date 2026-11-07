@@ -21,6 +21,12 @@ public class SseNotificationService {
         emitter.onCompletion(() -> emitters.remove(email));
         emitter.onTimeout(() -> emitters.remove(email));
         emitter.onError(error -> emitters.remove(email));
+        try {
+            emitter.send(SseEmitter.event().comment("connected"));
+        } catch (IOException e) {
+            emitters.remove(email);
+            emitter.complete();
+        }
 
         return emitter;
     }
