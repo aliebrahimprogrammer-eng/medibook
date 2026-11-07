@@ -1,0 +1,77 @@
+package com.ga.userservice.controller;
+
+import com.ga.userservice.dto.request.ProfileUpdateRequest;
+import com.ga.userservice.dto.response.ProfileResponse;
+import com.ga.userservice.service.ProfileService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
+@Tag(
+        name = "Profile",
+        description = "Authenticated user profile management and profile pictures"
+)
+@RestController
+@RequestMapping("/api/profile")
+@RequiredArgsConstructor
+public class ProfileController {
+
+    private final ProfileService profileService;
+
+    @Operation(
+            summary = "Get my profile",
+            description = "Retrieves the profile of the authenticated user"
+    )
+    @GetMapping
+    public ResponseEntity<ProfileResponse> getMyProfile(
+            Authentication authentication
+    ) {
+
+        return ResponseEntity.ok(
+                profileService.getMyProfile(
+                        authentication.getName()
+                )
+        );
+    }
+
+    @Operation(
+            summary = "Update my profile",
+            description = "Updates the profile information of the authenticated user"
+    )
+    @PutMapping
+    public ResponseEntity<ProfileResponse> updateMyProfile(
+            Authentication authentication,
+            @Valid @RequestBody ProfileUpdateRequest request
+    ) {
+
+        return ResponseEntity.ok(
+                profileService.updateMyProfile(
+                        authentication.getName(),
+                        request
+                )
+        );
+    }
+
+    @Operation(
+            summary = "Upload profile picture",
+            description = "Uploads or replaces the profile picture of the authenticated user"
+    )
+    @PostMapping("/picture")
+    public ResponseEntity<ProfileResponse> uploadProfilePicture(
+            Authentication authentication,
+            @RequestParam("file") MultipartFile file
+    ) {
+
+        return ResponseEntity.ok(
+                profileService.uploadProfilePicture(
+                        authentication.getName(),
+                        file
+                )
+        );
+    }
+}

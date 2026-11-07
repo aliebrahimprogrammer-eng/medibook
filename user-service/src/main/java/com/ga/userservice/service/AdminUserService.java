@@ -1,0 +1,175 @@
+package com.ga.userservice.service;
+
+import com.ga.userservice.dto.response.AdminUserResponse;
+import com.ga.userservice.model.entity.User;
+import com.ga.userservice.model.enums.UserRole;
+import com.ga.userservice.model.enums.UserStatus;
+import com.ga.userservice.repository.UserRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+public class AdminUserService {
+
+    private final UserRepository userRepository;
+    private final AuditLogService auditLogService;
+
+    @Transactional
+    public AdminUserResponse updateUserRole(
+            Long userId,
+            String adminEmail,
+            UserRole newRole
+    ) {
+        User admin = userRepository.findByEmail(adminEmail)
+                .orElseThrow(() -> new IllegalArgumentException("Admin user not found"));
+
+        if (admin.getRole() != UserRole.ADMIN) {
+            throw new IllegalArgumentException("Only admins can change user roles");
+        }
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        if (admin.getId().equals(user.getId())) {
+            throw new IllegalArgumentException("You cannot change your own role");
+        }
+
+        if (user.getRole() == newRole) {
+            throw new IllegalArgumentException("User already has this role");
+        }
+
+        if (user.getRole() == UserRole.ADMIN && newRole != UserRole.ADMIN) {
+
+            long adminCount = userRepository.countByRole(UserRole.ADMIN);
+
+            if (adminCount <= 1) {
+                throw new IllegalArgumentException(
+                        "The last admin cannot be demoted"
+                );
+            }
+        }
+
+        UserRole oldRole = user.getRole();
+
+        user.setRole(newRole);
+        userRepository.save(user);
+
+        auditLogService.log(
+                admin,
+                "USER_ROLE_UPDATED",
+                "USER",
+                user.getId(),
+                "User role changed from " + oldRole + " to " + newRole
+        );
+
+        return new AdminUserResponse(
+                user.getId(),
+                user.getEmail(),
+                user.getRole(),
+                user.getStatus(),
+                user.isEmailVerified()
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public List<AdminUserResponse> findAllUsers() {
+
+        return userRepository.findAll()
+                .stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    @Transactional
+    public void deactivateUser(
+            Long userId,
+            String adminEmail
+    ) {
+
+        User admin = userRepository.findByEmail(adminEmail)
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "Admin user not found"
+                        )
+                );
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "User not found"
+                        )
+                );
+
+        if (user.getStatus() == UserStatus.INACTIVE) {
+            throw new IllegalArgumentException(
+                    "User is already inactive"
+            );
+        }
+
+        user.setStatus(UserStatus.INACTIVE);
+
+        userRepository.save(user);
+
+        auditLogService.log(
+                admin,
+                "DEACTIVATE_USER",
+                "USER",
+                user.getId(),
+                "User account deactivated"
+        );
+    }
+
+    @Transactional
+    public void reactivateUser(
+            Long userId,
+            String adminEmail
+    ) {
+
+        User admin = userRepository.findByEmail(adminEmail)
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "Admin user not found"
+                        )
+                );
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "User not found"
+                        )
+                );
+
+        if (user.getStatus() == UserStatus.ACTIVE) {
+            throw new IllegalArgumentException(
+                    "User is already active"
+            );
+        }
+
+        user.setStatus(UserStatus.ACTIVE);
+
+        userRepository.save(user);
+
+        auditLogService.log(
+                admin,
+                "REACTIVATE_USER",
+                "USER",
+                user.getId(),
+                "User account reactivated"
+        );
+    }
+
+    private AdminUserResponse toResponse(User user) {
+
+        return new AdminUserResponse(
+                user.getId(),
+                user.getEmail(),
+                user.getRole(),
+                user.getStatus(),
+                user.isEmailVerified()
+        );
+    }
+}
