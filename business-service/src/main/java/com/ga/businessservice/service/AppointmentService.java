@@ -1,0 +1,636 @@
+package com.ga.businessservice.service;
+
+import com.ga.businessservice.dto.request.AppointmentRequest;
+import com.ga.businessservice.dto.request.AppointmentStatusRequest;
+import com.ga.businessservice.dto.response.AppointmentResponse;
+import com.ga.businessservice.model.entity.Appointment;
+import com.ga.businessservice.model.entity.Availability;
+import com.ga.businessservice.model.entity.Doctor;
+import com.ga.businessservice.model.entity.User;
+import com.ga.businessservice.model.entity.UserProfile;
+import com.ga.businessservice.model.enums.AppointmentStatus;
+import com.ga.businessservice.model.enums.UserRole;
+import com.ga.businessservice.model.enums.UserStatus;
+import com.ga.businessservice.notification.EmailService;
+import com.ga.businessservice.notification.SseNotificationService;
+import com.ga.businessservice.repository.AppointmentRepository;
+import com.ga.businessservice.repository.AvailabilityRepository;
+import com.ga.businessservice.repository.DoctorRepository;
+import com.ga.businessservice.repository.UserProfileRepository;
+import com.ga.businessservice.repository.UserRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import com.ga.businessservice.exception.ResourceConflictException;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.locks.ReentrantLock;
+
+@Service
+@RequiredArgsConstructor
+public class AppointmentService {
+
+    private final AppointmentRepository appointmentRepository;
+    private final AvailabilityRepository availabilityRepository;
+    private final DoctorRepository doctorRepository;
+    private final UserRepository userRepository;
+    private final UserProfileRepository userProfileRepository;
+    private final AuditLogService auditLogService;
+    private final EmailService emailService;
+    private final SseNotificationService sseNotificationService;
+    private final BackgroundJobService backgroundJobService;
+    private static final ConcurrentMap<Long, ReentrantLock> DOCTOR_BOOKING_LOCKS =
+            new ConcurrentHashMap<>();
+
+    @Transactional
+    public AppointmentResponse create(
+            String patientEmail,
+            AppointmentRequest request
+    ) {
+
+        // 1. Find the authenticated patient
+        User patient = userRepository.findByEmail(patientEmail)
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "Patient not found"
+                        )
+                );
+
+        // 2. Make sure the user is actually a patient
+        if (patient.getRole() != UserRole.PATIENT) {
+            throw new IllegalArgumentException(
+                    "Only patients can create appointments"
+            );
+        }
+
+        // 3. Make sure the patient is active
+        if (patient.getStatus() != UserStatus.ACTIVE) {
+            throw new IllegalArgumentException(
+                    "Inactive users cannot create appointments"
+            );
+        }
+
+        // 4. Make sure the patient verified their email
+        if (!patient.isEmailVerified()) {
+            throw new IllegalArgumentException(
+                    "Email must be verified before booking an appointment"
+            );
+        }
+
+        // 5. Validate appointment time
+        if (!request.getEndDateTime()
+                .isAfter(request.getStartDateTime())) {
+
+            throw new IllegalArgumentException(
+                    "End date and time must be after start date and time"
+            );
+        }
+
+        if (request.getStartDateTime()
+                .isBefore(LocalDateTime.now())) {
+
+            throw new IllegalArgumentException(
+                    "Appointment cannot be in the past"
+            );
+        }
+
+        // 6. Acquire a JVM-level lock for this doctor.
+        // Keep the lock until the transaction commits or rolls back.
+        ReentrantLock doctorBookingLock = DOCTOR_BOOKING_LOCKS.computeIfAbsent(
+                request.getDoctorId(),
+                ignored -> new ReentrantLock()
+        );
+
+        doctorBookingLock.lock();
+
+        try {
+            TransactionSynchronizationManager.registerSynchronization(
+                    new TransactionSynchronization() {
+                        @Override
+                        public void afterCompletion(int status) {
+                            doctorBookingLock.unlock();
+                        }
+                    }
+            );
+        } catch (RuntimeException exception) {
+            doctorBookingLock.unlock();
+            throw exception;
+        }
+
+        // 7. Find the doctor while holding the JVM-level lock.
+        // The database pessimistic lock is still required.
+        Doctor doctor = doctorRepository.findByIdForUpdate(
+                request.getDoctorId()
+        ).orElseThrow(() ->
+                new IllegalArgumentException("Doctor not found")
+        );
+
+        // 8. Check doctor availability
+        List<Availability> availabilities =
+                availabilityRepository.findByDoctorId(
+                        doctor.getId()
+                );
+
+        boolean fitsAvailability = availabilities
+                .stream()
+                .anyMatch(availability ->
+                        !request.getStartDateTime()
+                                .isBefore(
+                                        availability.getStartDateTime()
+                                )
+                                &&
+                                !request.getEndDateTime()
+                                        .isAfter(
+                                                availability.getEndDateTime()
+                                        )
+                );
+
+        if (!fitsAvailability) {
+            throw new IllegalArgumentException(
+                    "Appointment is outside the doctor's availability"
+            );
+        }
+
+        // 9. Check for overlapping appointments
+        List<Appointment> overlappingAppointments =
+                appointmentRepository.findOverlappingAppointments(
+                        doctor.getId(),
+                        request.getStartDateTime(),
+                        request.getEndDateTime(),
+                        AppointmentStatus.CANCELLED
+                );
+
+        if (!overlappingAppointments.isEmpty()) {
+            throw new ResourceConflictException(
+                    "Doctor already has an appointment during this time"
+            );
+        }
+
+        // 10. Create appointment
+        Appointment appointment = new Appointment();
+
+        appointment.setPatient(patient);
+        appointment.setDoctor(doctor);
+        appointment.setStartDateTime(
+                request.getStartDateTime()
+        );
+        appointment.setEndDateTime(
+                request.getEndDateTime()
+        );
+        appointment.setStatus(
+                AppointmentStatus.PENDING
+        );
+        appointment.setReason(request.getReason());
+
+        Appointment saved =
+                appointmentRepository.save(appointment);
+
+        //11- Add audit log for the created appointment
+        auditLogService.log(
+                patient,
+                "CREATE_APPOINTMENT",
+                "APPOINTMENT",
+                saved.getId(),
+                "Patient created an appointment with doctor ID "
+                        + doctor.getId()
+        );
+
+        //12- Send Notification by email
+        emailService.sendEmail(
+                patient.getEmail(),
+                "MediBook Appointment Request",
+                "Your appointment request has been created.\n\n"
+                        + "Doctor ID: " + doctor.getId() + "\n"
+                        + "Start: " + request.getStartDateTime() + "\n"
+                        + "End: " + request.getEndDateTime() + "\n"
+                        + "Status: PENDING"
+        );
+
+        //13- send SSE notification for patient
+        sseNotificationService.sendNotification(
+                patient.getEmail(),
+                "Appointment #" + appointment.getId()
+                        + " was successfully created."
+        );
+
+        //14- send SSE notification for doctor
+        sseNotificationService.sendNotification(
+                doctor.getUser().getEmail(),
+                "A new appointment #" + appointment.getId()
+                        + " has been booked."
+        );
+
+        return toResponse(saved);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<AppointmentResponse> findPatientAppointments(
+            String patientEmail,
+            Pageable pageable
+    ) {
+
+        User patient = userRepository.findByEmail(patientEmail)
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "Patient not found"
+                        )
+                );
+
+        return appointmentRepository
+                .findByPatientId(patient.getId(), pageable)
+                .map(this::toResponse);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<AppointmentResponse> findDoctorAppointments(
+            String doctorEmail,
+            Pageable pageable
+    ) {
+
+        User doctorUser = userRepository.findByEmail(doctorEmail)
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "Doctor not found"
+                        )
+                );
+
+        Doctor doctor = doctorRepository.findByUserId(
+                doctorUser.getId()
+        ).orElseThrow(() ->
+                new IllegalArgumentException(
+                        "Doctor profile not found"
+                )
+        );
+
+        return appointmentRepository
+                .findByDoctorId(doctor.getId(), pageable)
+                .map(this::toResponse);
+    }
+
+    @Transactional
+    public void cancelAppointment(
+            Long appointmentId,
+            String patientEmail
+    ) {
+
+        User patient = userRepository.findByEmail(patientEmail)
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "Patient not found"
+                        )
+                );
+
+        Appointment appointment =
+                appointmentRepository.findById(appointmentId)
+                        .orElseThrow(() ->
+                                new IllegalArgumentException(
+                                        "Appointment not found"
+                                )
+                        );
+
+        Doctor doctor = doctorRepository.findById(appointment.getDoctor().getId())
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "Doctor not found"
+                        )
+                );
+
+        // Ownership check
+        if (!appointment.getPatient()
+                .getId()
+                .equals(patient.getId())) {
+
+            throw new IllegalArgumentException(
+                    "You can only cancel your own appointments"
+            );
+        }
+
+        // Don't cancel something already canceled
+        if (appointment.getStatus() ==
+                AppointmentStatus.CANCELLED) {
+
+            throw new IllegalArgumentException(
+                    "Appointment is already cancelled"
+            );
+        }
+
+        // Don't cancel completed appointments
+        if (appointment.getStatus() ==
+                AppointmentStatus.COMPLETED) {
+
+            throw new IllegalArgumentException(
+                    "Completed appointments cannot be cancelled"
+            );
+        }
+
+        appointment.setStatus(
+                AppointmentStatus.CANCELLED
+        );
+
+        appointmentRepository.save(appointment);
+        backgroundJobService.scheduleWaitlistAllocation(appointment.getId());
+
+        auditLogService.log(
+                patient,
+                "CANCEL_APPOINTMENT",
+                "APPOINTMENT",
+                appointment.getId(),
+                "Patient cancelled appointment"
+        );
+
+        emailService.sendEmail(
+                patient.getEmail(),
+                "MediBook Appointment Cancelled",
+                "Your appointment has been cancelled."
+        );
+
+        sseNotificationService.sendNotification(
+                patient.getEmail(),
+                "Appointment #" + appointment.getId()
+                        + " was cancelled."
+        );
+
+        sseNotificationService.sendNotification(
+                doctor.getUser().getEmail(),
+                "A new appointment #" + appointment.getId()
+                        + " has been cancelled."
+        );
+    }
+
+    @Transactional
+    public void updateStatus(
+            Long appointmentId,
+            String doctorEmail,
+            AppointmentStatusRequest request
+    ) {
+
+        User doctorUser = userRepository.findByEmail(doctorEmail)
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "Doctor not found"
+                        )
+                );
+
+        Doctor doctor = doctorRepository.findByUserId(
+                doctorUser.getId()
+        ).orElseThrow(() ->
+                new IllegalArgumentException(
+                        "Doctor profile not found"
+                )
+        );
+
+        Appointment appointment =
+                appointmentRepository.findById(appointmentId)
+                        .orElseThrow(() ->
+                                new IllegalArgumentException(
+                                        "Appointment not found"
+                                )
+                        );
+
+        // Make sure this doctor owns the appointment
+        if (!appointment.getDoctor()
+                .getId()
+                .equals(doctor.getId())) {
+
+            throw new IllegalArgumentException(
+                    "You can only manage your own appointments"
+            );
+        }
+
+        AppointmentStatus currentStatus =
+                appointment.getStatus();
+
+        AppointmentStatus newStatus =
+                request.getStatus();
+
+        // PENDING → CONFIRMED
+        if (currentStatus == AppointmentStatus.PENDING
+                && newStatus == AppointmentStatus.CONFIRMED) {
+
+            appointment.setStatus(newStatus);
+
+            // PENDING → CANCELLED
+        } else if (currentStatus == AppointmentStatus.PENDING
+                && newStatus == AppointmentStatus.CANCELLED) {
+
+            appointment.setStatus(newStatus);
+
+            // CONFIRMED → COMPLETED
+        } else if (currentStatus == AppointmentStatus.CONFIRMED
+                && newStatus == AppointmentStatus.COMPLETED) {
+
+            appointment.setStatus(newStatus);
+
+            // CONFIRMED → CANCELLED
+        } else if (currentStatus == AppointmentStatus.CONFIRMED
+                && newStatus == AppointmentStatus.CANCELLED) {
+
+            appointment.setStatus(newStatus);
+
+        } else {
+            throw new IllegalArgumentException(
+                    "Invalid appointment status transition from "
+                            + currentStatus
+                            + " to "
+                            + newStatus
+            );
+        }
+
+        appointmentRepository.save(appointment);
+
+        if (newStatus == AppointmentStatus.CANCELLED) {
+            backgroundJobService.scheduleWaitlistAllocation(appointment.getId());
+        }
+
+        auditLogService.log(
+                doctorUser,
+                "UPDATE_APPOINTMENT_STATUS",
+                "APPOINTMENT",
+                appointment.getId(),
+                "Appointment status changed from "
+                        + currentStatus
+                        + " to "
+                        + newStatus
+        );
+
+        if(newStatus == AppointmentStatus.CONFIRMED) {
+            emailService.sendEmail(
+                    appointment.getPatient().getEmail(),
+                    "MediBook Appointment confirmed",
+                    "Your appointment has been confirmed.\n\n"
+                            + "Doctor ID: " + doctor.getId() + "\n"
+                            + "Start: " + appointment.getStartDateTime() + "\n"
+                            + "End: " + appointment.getEndDateTime() + "\n"
+                            + "Status: CONFIRMED"
+            );
+            sseNotificationService.sendNotification(
+                    appointment.getPatient().getEmail(),
+                    "Your appointment has been confirmed.\n\n"
+                            + "Doctor ID: " + doctor.getId() + "\n"
+                            + "Start: " + appointment.getStartDateTime() + "\n"
+                            + "End: " + appointment.getEndDateTime() + "\n"
+                            + "Status: CONFIRMED"
+            );
+
+            sseNotificationService.sendNotification(
+                    doctor.getUser().getEmail(),
+                    "The appointment " + appointmentId + "has been confirmed.\n\n"
+                            + "Patient ID: " + appointment.getPatient().getId() + "\n"
+                            + "Start: " + appointment.getStartDateTime() + "\n"
+                            + "End: " + appointment.getEndDateTime() + "\n"
+                            + "Status: CONFIRMED"
+            );
+        } else if (newStatus == AppointmentStatus.COMPLETED){
+            emailService.sendEmail(
+                    appointment.getPatient().getEmail(),
+                    "MediBook Appointment completed",
+                    "Your appointment has been completed.\n\n"
+                            + "Doctor ID: " + doctor.getId() + "\n"
+                            + "Start: " + appointment.getStartDateTime() + "\n"
+                            + "End: " + appointment.getEndDateTime() + "\n"
+                            + "Status: COMPLETED"
+            );
+            sseNotificationService.sendNotification(
+                    appointment.getPatient().getEmail(),
+                    "Your appointment has been completed.\n\n"
+                            + "Doctor ID: " + doctor.getId() + "\n"
+                            + "Start: " + appointment.getStartDateTime() + "\n"
+                            + "End: " + appointment.getEndDateTime() + "\n"
+                            + "Status: COMPLETED"
+            );
+
+            sseNotificationService.sendNotification(
+                    doctor.getUser().getEmail(),
+                    "The appointment " + appointmentId + "has been completed.\n\n"
+                            + "Patient ID: " + appointment.getPatient().getId() + "\n"
+                            + "Start: " + appointment.getStartDateTime() + "\n"
+                            + "End: " + appointment.getEndDateTime() + "\n"
+                            + "Status: COMPLETED"
+            );
+        } else if (newStatus == AppointmentStatus.CANCELLED){
+            emailService.sendEmail(
+                    appointment.getPatient().getEmail(),
+                    "MediBook Appointment Cancelled",
+                    "Your appointment has been cancelled."
+            );
+
+            sseNotificationService.sendNotification(
+                    appointment.getPatient().getEmail(),
+                    "Appointment #" + appointment.getId()
+                            + " was cancelled."
+            );
+
+            sseNotificationService.sendNotification(
+                    doctor.getUser().getEmail(),
+                    "A new appointment #" + appointment.getId()
+                            + " has been cancelled."
+            );
+        }
+
+
+
+
+
+    }
+
+
+    private AppointmentResponse toResponse(
+            Appointment appointment
+    ) {
+        UserProfile doctorProfile = userProfileRepository
+                .findByUserId(
+                        appointment.getDoctor().getUser().getId()
+                )
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "Doctor profile not found"
+                        )
+                );
+
+        UserProfile patientProfile = userProfileRepository
+                .findByUserId(
+                        appointment.getPatient().getId()
+                )
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "Patient profile not found"
+                        )
+                );
+
+        String doctorName = doctorProfile.getFirstName()
+                + " "
+                + doctorProfile.getLastName();
+
+        String patientName = patientProfile.getFirstName()
+                + " "
+                + patientProfile.getLastName();
+
+        return new AppointmentResponse(
+                appointment.getId(),
+                appointment.getPatient().getId(),
+                appointment.getDoctor().getId(),
+                doctorName,
+                patientName,
+                appointment.getStartDateTime(),
+                appointment.getEndDateTime(),
+                appointment.getStatus(),
+                appointment.getReason(),
+                appointment.getCreatedAt(),
+                appointment.getUpdatedAt()
+        );
+    }
+
+
+    @Transactional(readOnly = true)
+    public AppointmentResponse findById(
+            Long appointmentId,
+            String userEmail
+    ) {
+
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "User not found"
+                        )
+                );
+
+        Appointment appointment =
+                appointmentRepository.findById(appointmentId)
+                        .orElseThrow(() ->
+                                new IllegalArgumentException(
+                                        "Appointment not found"
+                                )
+                        );
+
+        boolean isPatient =
+                appointment.getPatient()
+                        .getId()
+                        .equals(user.getId());
+
+        boolean isDoctor =
+                appointment.getDoctor()
+                        .getUser()
+                        .getId()
+                        .equals(user.getId());
+
+        boolean isAdmin =
+                user.getRole() == UserRole.ADMIN;
+
+        if (!isPatient && !isDoctor && !isAdmin) {
+            throw new IllegalArgumentException(
+                    "You are not allowed to view this appointment"
+            );
+        }
+
+        return toResponse(appointment);
+    }
+}
