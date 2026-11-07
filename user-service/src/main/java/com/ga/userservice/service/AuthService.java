@@ -10,7 +10,6 @@ import com.ga.userservice.model.entity.User;
 import com.ga.userservice.model.entity.UserProfile;
 import com.ga.userservice.model.enums.UserRole;
 import com.ga.userservice.model.enums.UserStatus;
-import com.ga.userservice.notification.EmailService;
 import com.ga.userservice.repository.EmailVerificationTokenRepository;
 import com.ga.userservice.repository.PasswordResetTokenRepository;
 import com.ga.userservice.repository.UserProfileRepository;
@@ -28,6 +27,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
+import com.ga.userservice.event.UserEmailNotificationEvent;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.beans.factory.annotation.Value;
+import java.time.Instant;
+
 
 @Service
 @RequiredArgsConstructor
@@ -41,7 +45,10 @@ public class AuthService {
     private final EmailVerificationTokenRepository emailVerificationTokenRepository;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final AuditLogService auditLogService;
-    private final EmailService emailService;
+    private final ApplicationEventPublisher eventPublisher;
+
+    @Value("${app.public-base-url:http://localhost:8081}")
+    private String publicBaseUrl;
 
     @Transactional
     public UserResponse register(RegisterRequest request) {
@@ -77,19 +84,20 @@ public class AuthService {
         emailVerificationTokenRepository.save(verificationToken);
 
         String verificationLink =
-                "http://localhost:8080/api/auth/verify-email?token="
+                publicBaseUrl + "/api/auth/verify-email?token="
                         + verificationToken.getToken();
 
-        emailService.sendEmail(
+        eventPublisher.publishEvent(new UserEmailNotificationEvent(
+                UUID.randomUUID(),
+                "EMAIL_VERIFICATION",
                 user.getEmail(),
                 "Verify your MediBook account",
                 "Welcome to MediBook!\n\n"
                         + "Please verify your email address by opening "
                         + "the following link:\n\n"
-                        + verificationLink
-                        + "\n\n"
-                        + "This verification link expires in 24 hours."
-        );
+                        + verificationLink,
+                Instant.now()
+        ));
 
         UserProfile profile = new UserProfile();
 
@@ -201,21 +209,21 @@ public class AuthService {
         passwordResetTokenRepository.save(resetToken);
 
         String resetLink =
-                "http://localhost:8080/api/auth/reset-password?token="
+                publicBaseUrl + "/api/auth/reset-password?token="
                         + resetToken.getToken();
 
-        emailService.sendEmail(
+        eventPublisher.publishEvent(new UserEmailNotificationEvent(
+                UUID.randomUUID(),
+                "PASSWORD_RESET",
                 user.getEmail(),
                 "MediBook Password Reset",
                 "We received a request to reset your MediBook password.\n\n"
                         + "Use the following token to reset your password:\n\n"
                         + resetToken.getToken()
-                        + "\n\n"
-                        + "Reset link:\n"
-                        + resetLink
-                        + "\n\n"
-                        + "This reset token expires in 30 minutes."
-        );
+                        + "\n\nOr use this link:\n\n"
+                        + resetLink,
+                Instant.now()
+        ));
 
         auditLogService.log(
                 user,
