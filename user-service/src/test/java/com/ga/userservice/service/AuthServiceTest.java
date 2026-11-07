@@ -7,6 +7,7 @@ import com.ga.userservice.dto.response.LoginResponse;
 import com.ga.userservice.dto.response.UserResponse;
 import com.ga.userservice.event.UserEmailNotificationEvent;
 import com.ga.userservice.exception.ResourceConflictException;
+import com.ga.userservice.model.entity.EmailVerificationToken;
 import com.ga.userservice.model.entity.User;
 import com.ga.userservice.model.enums.UserRole;
 import com.ga.userservice.model.enums.UserStatus;
@@ -28,6 +29,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -185,4 +187,88 @@ class AuthServiceTest {
 
         verify(jwtUtils, never()).generateJwtToken(any());
     }
+
+
+    @Test
+    void verifyEmailShouldVerifyUserAndDeleteToken() {
+
+        User user = new User();
+        user.setId(1L);
+        user.setEmail("patient@example.com");
+        user.setEmailVerified(false);
+
+        EmailVerificationToken token = new EmailVerificationToken();
+        token.setToken("valid-token");
+        token.setUser(user);
+        token.setExpiresAt(LocalDateTime.now().plusHours(1));
+
+        when(emailVerificationTokenRepository.findByToken("valid-token"))
+                .thenReturn(Optional.of(token));
+
+        authService.verifyEmail("valid-token");
+
+        assertTrue(user.isEmailVerified());
+
+        verify(userRepository).save(user);
+        verify(emailVerificationTokenRepository).delete(token);
+
+        verify(auditLogService).log(
+                eq(user),
+                eq("USER_VERIFIED_EMAIL"),
+                eq("USER"),
+                eq(1L),
+                anyString()
+        );
+    }
+
+    @Test
+    void verifyEmailShouldRejectInvalidToken() {
+
+        when(emailVerificationTokenRepository.findByToken("invalid-token"))
+                .thenReturn(Optional.empty());
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> authService.verifyEmail("invalid-token")
+        );
+
+        assertEquals("Invalid verification token", exception.getMessage());
+
+        verify(userRepository, never()).save(any(User.class));
+        verify(emailVerificationTokenRepository, never())
+                .delete(any(EmailVerificationToken.class));
+    }
+
+    @Test
+    void verifyEmailShouldRejectExpiredToken() {
+
+        User user = new User();
+        user.setId(1L);
+        user.setEmailVerified(false);
+
+        EmailVerificationToken token = new EmailVerificationToken();
+        token.setToken("expired-token");
+        token.setUser(user);
+        token.setExpiresAt(LocalDateTime.now().minusHours(1));
+
+        when(emailVerificationTokenRepository.findByToken("expired-token"))
+                .thenReturn(Optional.of(token));
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> authService.verifyEmail("expired-token")
+        );
+
+        assertEquals(
+                "Verification token has expired",
+                exception.getMessage()
+        );
+
+        assertFalse(user.isEmailVerified());
+
+        verify(userRepository, never()).save(any(User.class));
+        verify(emailVerificationTokenRepository, never())
+                .delete(any(EmailVerificationToken.class));
+    }
+
 }
