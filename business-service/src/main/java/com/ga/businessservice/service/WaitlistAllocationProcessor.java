@@ -1,6 +1,7 @@
-
 package com.ga.businessservice.service;
 
+import com.ga.businessservice.dto.event.AppointmentNotificationEvent;
+import com.ga.businessservice.dto.response.InternalUserResponse;
 import com.ga.businessservice.entity.Appointment;
 import com.ga.businessservice.entity.AppointmentWaitlist;
 import com.ga.businessservice.entity.BackgroundJob;
@@ -15,9 +16,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -31,7 +35,8 @@ public class WaitlistAllocationProcessor {
     private final AppointmentWaitlistRepository waitlistRepository;
     private final DoctorRepository doctorRepository;
     private final AppointmentEventService appointmentEventService;
-    private final PersistentNotificationService persistentNotificationService;
+    private final AppointmentEventPublisher appointmentEventPublisher;
+    private final UserServiceClient userServiceClient;
     private final AuditLogService auditLogService;
 
     @Transactional
@@ -100,8 +105,8 @@ public class WaitlistAllocationProcessor {
                         !entry.getPreferredStartDateTime()
                                 .isAfter(cancelledAppointment.getStartDateTime())
                                 &&
-                                !entry.getPreferredEndDateTime()
-                                        .isBefore(cancelledAppointment.getEndDateTime())
+                        !entry.getPreferredEndDateTime()
+                                .isBefore(cancelledAppointment.getEndDateTime())
                 )
                 .findFirst()
                 .orElse(null);
@@ -117,9 +122,13 @@ public class WaitlistAllocationProcessor {
             return;
         }
 
+        // Retrieve the patient from User Service.
+        InternalUserResponse patient =
+                userServiceClient.findById(match.getPatientId());
+
         // Create the replacement appointment.
         Appointment newAppointment = new Appointment();
-        newAppointment.setPatient(match.getPatient());
+        newAppointment.setPatientId(match.getPatientId());
         newAppointment.setDoctor(doctor);
         newAppointment.setStartDateTime(
                 cancelledAppointment.getStartDateTime()
@@ -140,9 +149,9 @@ public class WaitlistAllocationProcessor {
         match.setMatchedAppointment(savedAppointment);
         waitlistRepository.save(match);
 
-        // Record the automatic waitlist allocation in the main audit log.
+        // Record the automatic waitlist allocation in the audit log.
         auditLogService.log(
-                match.getPatient(),
+                patient,
                 "AUTO_ALLOCATE_WAITLIST_APPOINTMENT",
                 "APPOINTMENT",
                 savedAppointment.getId(),
@@ -163,18 +172,32 @@ public class WaitlistAllocationProcessor {
                         + savedAppointment.getId()
         );
 
-        // Persist an in-app notification and a pending email delivery.
-        persistentNotificationService.createNotification(
-                match.getPatient(),
-                savedAppointment,
-                match,
-                "WAITLIST_MATCHED",
-                "An appointment slot is available",
-                "A slot has been allocated to you for "
-                        + savedAppointment.getStartDateTime()
-                        + " to "
-                        + savedAppointment.getEndDateTime()
-                        + ". Your appointment is currently PENDING."
+        // Publish the notification event only after the transaction commits.
+        AppointmentNotificationEvent notificationEvent =
+                new AppointmentNotificationEvent(
+                        UUID.randomUUID(),
+                        "WAITLIST_APPOINTMENT_ALLOCATED",
+                        savedAppointment.getId(),
+                        patient.id(),
+                        patient.email(),
+                        patient.role(),
+                        "An appointment slot is available",
+                        "A slot has been allocated to you for "
+                                + savedAppointment.getStartDateTime()
+                                + " to "
+                                + savedAppointment.getEndDateTime()
+                                + ". Your appointment is currently PENDING.",
+                        "A new appointment slot has been allocated to you.",
+                        LocalDateTime.now()
+                );
+
+        TransactionSynchronizationManager.registerSynchronization(
+                new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        appointmentEventPublisher.publish(notificationEvent);
+                    }
+                }
         );
 
         completeJob(job);
@@ -187,4 +210,3 @@ public class WaitlistAllocationProcessor {
         backgroundJobRepository.save(job);
     }
 }
-

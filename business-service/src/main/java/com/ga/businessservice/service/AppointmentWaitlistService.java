@@ -1,21 +1,16 @@
-
 package com.ga.businessservice.service;
 
 import com.ga.businessservice.dto.request.AppointmentWaitlistRequest;
 import com.ga.businessservice.dto.response.AppointmentWaitlistResponse;
+import com.ga.businessservice.dto.response.InternalUserResponse;
 import com.ga.businessservice.exception.ResourceConflictException;
 import com.ga.businessservice.entity.AppointmentWaitlist;
 import com.ga.businessservice.entity.Availability;
 import com.ga.businessservice.entity.Doctor;
-import com.ga.businessservice.model.entity.User;
-import com.ga.businessservice.model.enums.UserRole;
-import com.ga.businessservice.model.enums.UserStatus;
 import com.ga.businessservice.model.enums.WaitlistStatus;
 import com.ga.businessservice.repository.AppointmentWaitlistRepository;
 import com.ga.businessservice.repository.AvailabilityRepository;
 import com.ga.businessservice.repository.DoctorRepository;
-import com.ga.businessservice.repository.UserRepository;
-import com.ga.businessservice.repository.UserProfileRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,10 +25,9 @@ public class AppointmentWaitlistService {
     private final AppointmentWaitlistRepository waitlistRepository;
     private final AvailabilityRepository availabilityRepository;
     private final DoctorRepository doctorRepository;
-    private final UserRepository userRepository;
+    private final UserServiceClient userServiceClient;
     private final AuditLogService auditLogService;
     private final AppointmentEventService appointmentEventService;
-    private final UserProfileRepository userProfileRepository;
 
     /**
      * Adds an eligible patient to a doctor's waitlist.
@@ -67,24 +61,21 @@ public class AppointmentWaitlistService {
             );
         }
 
-        User patient = userRepository.findByEmail(patientEmail)
-                .orElseThrow(() ->
-                        new IllegalArgumentException("Patient not found")
-                );
+        InternalUserResponse patient = userServiceClient.findByEmail(patientEmail);
 
-        if (patient.getRole() != UserRole.PATIENT) {
+        if (!"PATIENT".equals(patient.role())) {
             throw new IllegalArgumentException(
                     "Only patients can join an appointment waitlist"
             );
         }
 
-        if (patient.getStatus() != UserStatus.ACTIVE) {
+        if (!"ACTIVE".equals(patient.status())) {
             throw new IllegalArgumentException(
                     "Inactive users cannot join an appointment waitlist"
             );
         }
 
-        if (!patient.isEmailVerified()) {
+        if (!patient.emailVerified()) {
             throw new IllegalArgumentException(
                     "Email must be verified before joining a waitlist"
             );
@@ -97,7 +88,10 @@ public class AppointmentWaitlistService {
                 new IllegalArgumentException("Doctor not found")
         );
 
-        if (doctor.getUser().getStatus() != UserStatus.ACTIVE) {
+        InternalUserResponse doctorUser =
+                userServiceClient.findById(doctor.getUserId());
+
+        if (!"ACTIVE".equals(doctorUser.status())) {
             throw new IllegalArgumentException("Doctor is inactive");
         }
 
@@ -118,7 +112,7 @@ public class AppointmentWaitlistService {
 
         boolean duplicate = waitlistRepository
                 .existsByPatientIdAndDoctorIdAndPreferredStartDateTimeAndPreferredEndDateTimeAndStatus(
-                        patient.getId(),
+                        patient.id(),
                         doctor.getId(),
                         start,
                         end,
@@ -132,7 +126,7 @@ public class AppointmentWaitlistService {
         }
 
         AppointmentWaitlist entry = new AppointmentWaitlist();
-        entry.setPatient(patient);
+        entry.setPatientId(patient.id());
         entry.setDoctor(doctor);
         entry.setPreferredStartDateTime(start);
         entry.setPreferredEndDateTime(end);
@@ -156,7 +150,7 @@ public class AppointmentWaitlistService {
         appointmentEventService.recordWaitlistEvent(
                 saved,
                 "WAITLIST_JOINED",
-                "Patient " + patient.getId()
+                "Patient " + patient.id()
                         + " joined the waitlist for doctor "
                         + doctor.getId()
                         + " for " + start + " to " + end
@@ -172,13 +166,11 @@ public class AppointmentWaitlistService {
     public List<AppointmentWaitlistResponse> findMyWaitlist(
             String patientEmail
     ) {
-        User patient = userRepository.findByEmail(patientEmail)
-                .orElseThrow(() ->
-                        new IllegalArgumentException("Patient not found")
-                );
+        InternalUserResponse patient =
+                userServiceClient.findByEmail(patientEmail);
 
         return waitlistRepository
-                .findByPatientIdOrderByCreatedAtDesc(patient.getId())
+                .findByPatientIdOrderByCreatedAtDesc(patient.id())
                 .stream()
                 .map(this::toResponse)
                 .toList();
@@ -192,20 +184,16 @@ public class AppointmentWaitlistService {
             Long waitlistEntryId,
             String patientEmail
     ) {
-        User patient = userRepository.findByEmail(patientEmail)
-                .orElseThrow(() ->
-                        new IllegalArgumentException("Patient not found")
-                );
+        InternalUserResponse patient =
+                userServiceClient.findByEmail(patientEmail);
 
         AppointmentWaitlist entry = waitlistRepository
                 .findById(waitlistEntryId)
                 .orElseThrow(() ->
-                        new IllegalArgumentException(
-                                "Waitlist entry not found"
-                        )
+                        new IllegalArgumentException("Waitlist entry not found")
                 );
 
-        if (!entry.getPatient().getId().equals(patient.getId())) {
+        if (!entry.getPatientId().equals(patient.id())) {
             throw new IllegalArgumentException(
                     "You can only cancel your own waitlist entries"
             );
@@ -231,7 +219,7 @@ public class AppointmentWaitlistService {
         appointmentEventService.recordWaitlistEvent(
                 saved,
                 "WAITLIST_CANCELLED",
-                "Patient " + patient.getId()
+                "Patient " + patient.id()
                         + " cancelled waitlist entry " + saved.getId()
         );
     }
@@ -239,18 +227,15 @@ public class AppointmentWaitlistService {
     private AppointmentWaitlistResponse toResponse(
             AppointmentWaitlist entry
     ) {
-        Long doctorUserId = entry.getDoctor().getUser().getId();
+        InternalUserResponse doctorUser =
+                userServiceClient.findById(entry.getDoctor().getUserId());
 
-        String doctorName = userProfileRepository
-                .findByUserId(doctorUserId)
-                .map(profile ->
-                        profile.getFirstName() + " " + profile.getLastName()
-                )
-                .orElse("Unknown Doctor");
+        String doctorName = doctorUser.firstName() + " "
+                + doctorUser.lastName();
 
         return new AppointmentWaitlistResponse(
                 entry.getId(),
-                entry.getPatient().getId(),
+                entry.getPatientId(),
                 entry.getDoctor().getId(),
                 doctorName,
                 entry.getPreferredStartDateTime(),
@@ -264,4 +249,3 @@ public class AppointmentWaitlistService {
         );
     }
 }
-

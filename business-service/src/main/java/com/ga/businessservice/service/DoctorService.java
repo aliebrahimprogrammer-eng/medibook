@@ -3,26 +3,26 @@ package com.ga.businessservice.service;
 import com.ga.businessservice.dto.request.DoctorRequest;
 import com.ga.businessservice.dto.request.DoctorUpdateRequest;
 import com.ga.businessservice.dto.response.DoctorResponse;
+import com.ga.businessservice.dto.response.InternalUserResponse;
 import com.ga.businessservice.entity.Doctor;
 import com.ga.businessservice.entity.Specialization;
-import com.ga.businessservice.model.entity.User;
-import com.ga.businessservice.model.entity.UserProfile;
-import com.ga.businessservice.model.enums.UserRole;
-import com.ga.businessservice.repository.*;
+import com.ga.businessservice.repository.DoctorRepository;
+import com.ga.businessservice.repository.SpecializationRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class DoctorService {
 
     private final DoctorRepository doctorRepository;
-    private final UserRepository userRepository;
-    private final UserProfileRepository userProfileRepository;
+    private final UserServiceClient userServiceClient;
     private final SpecializationRepository specializationRepository;
     private final AuditLogService auditLogService;
 
@@ -31,24 +31,19 @@ public class DoctorService {
             DoctorRequest request,
             String adminEmail
     ) {
+        InternalUserResponse admin =
+                userServiceClient.findByEmail(adminEmail);
 
-        User admin = userRepository.findByEmail(adminEmail)
-                .orElseThrow(() -> new IllegalArgumentException("Admin user not found"));
+        InternalUserResponse user =
+                userServiceClient.findById(request.getUserId());
 
-        User user = userRepository.findById(request.getUserId())
-                .orElseThrow(() ->
-                        new IllegalArgumentException(
-                                "User not found"
-                        )
-                );
-
-        if (user.getRole() != UserRole.DOCTOR) {
+        if (!"DOCTOR".equals(user.role())) {
             throw new IllegalArgumentException(
                     "User must have the DOCTOR role"
             );
         }
 
-        if (doctorRepository.existsByUserId(user.getId())) {
+        if (doctorRepository.existsByUserId(user.id())) {
             throw new IllegalArgumentException(
                     "Doctor profile already exists for this user"
             );
@@ -73,7 +68,7 @@ public class DoctorService {
 
         Doctor doctor = new Doctor();
 
-        doctor.setUser(user);
+        doctor.setUserId(user.id());
         doctor.setSpecialization(specialization);
         doctor.setLicenseNumber(request.getLicenseNumber());
         doctor.setBio(request.getBio());
@@ -86,7 +81,7 @@ public class DoctorService {
                 "DOCTOR",
                 savedDoctor.getId(),
                 "A new doctor id " + savedDoctor.getId()
-                        + " created by admin id " + admin.getId()
+                        + " created by admin id " + admin.id()
         );
 
         return toResponse(savedDoctor);
@@ -94,20 +89,16 @@ public class DoctorService {
 
     @Transactional(readOnly = true)
     public DoctorResponse findByUserEmail(String email) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() ->
-                        new IllegalArgumentException(
-                                "Doctor user not found"
-                        )
-                );
+        InternalUserResponse user =
+                userServiceClient.findByEmail(email);
 
-        if (user.getRole() != UserRole.DOCTOR) {
+        if (!"DOCTOR".equals(user.role())) {
             throw new IllegalArgumentException(
                     "The authenticated user is not a doctor"
             );
         }
 
-        Doctor doctor = doctorRepository.findByUserId(user.getId())
+        Doctor doctor = doctorRepository.findByUserId(user.id())
                 .orElseThrow(() ->
                         new IllegalArgumentException(
                                 "Doctor profile not found for this user"
@@ -130,24 +121,17 @@ public class DoctorService {
     }
 
     private DoctorResponse toResponse(Doctor doctor) {
-        User user = doctor.getUser();
-
-        UserProfile profile =
-                userProfileRepository.findByUserId(user.getId())
-                        .orElseThrow(() ->
-                                new IllegalArgumentException(
-                                        "User profile not found"
-                                )
-                        );
+        InternalUserResponse user =
+                userServiceClient.findById(doctor.getUserId());
 
         Specialization specialization = doctor.getSpecialization();
 
         return new DoctorResponse(
                 doctor.getId(),
-                user.getId(),
-                user.getEmail(),
-                profile.getFirstName(),
-                profile.getLastName(),
+                user.id(),
+                user.email(),
+                user.firstName(),
+                user.lastName(),
                 specialization.getId(),
                 specialization.getName(),
                 doctor.getLicenseNumber(),
@@ -161,44 +145,74 @@ public class DoctorService {
             String specialization,
             Pageable pageable
     ) {
-        Page<Doctor> doctors;
-
         boolean hasName = name != null && !name.isBlank();
         boolean hasSpecialization =
                 specialization != null && !specialization.isBlank();
 
-        if (hasName && hasSpecialization) {
-            doctors = doctorRepository.searchByNameAndSpecialization(
-                    name,
-                    specialization,
-                    pageable
-            );
-        } else if (hasName) {
-            doctors = doctorRepository.searchByName(
-                    name,
-                    pageable
-            );
-        } else if (hasSpecialization) {
-            doctors = doctorRepository.searchBySpecialization(
-                    specialization,
-                    pageable
-            );
-        } else {
-            doctors = doctorRepository.findAll(pageable);
+        if (!hasName && hasSpecialization) {
+            return doctorRepository
+                    .searchBySpecialization(specialization, pageable)
+                    .map(this::toResponse);
         }
 
-        return doctors.map(this::toResponse);
+        if (!hasName && !hasSpecialization) {
+            return doctorRepository.findAll(pageable)
+                    .map(this::toResponse);
+        }
+
+        // User names belong to User Service, so filtering happens
+        // after retrieving the doctor records.
+        List<Doctor> matchingDoctors = doctorRepository.findAll()
+                .stream()
+                .filter(doctor -> {
+                    if (hasSpecialization &&
+                            !doctor.getSpecialization().getName()
+                                    .equalsIgnoreCase(specialization)) {
+                        return false;
+                    }
+
+                    InternalUserResponse user =
+                            userServiceClient.findById(doctor.getUserId());
+
+                    String fullName =
+                            (user.firstName() + " " + user.lastName())
+                                    .toLowerCase();
+
+                    return fullName.contains(name.toLowerCase())
+                            || user.firstName().toLowerCase()
+                                    .contains(name.toLowerCase())
+                            || user.lastName().toLowerCase()
+                                    .contains(name.toLowerCase());
+                })
+                .toList();
+
+        List<DoctorResponse> responses = matchingDoctors.stream()
+                .map(this::toResponse)
+                .toList();
+
+        int start = (int) pageable.getOffset();
+        int end = Math.min(start + pageable.getPageSize(), responses.size());
+
+        List<DoctorResponse> pageContent =
+                start >= responses.size()
+                        ? List.of()
+                        : responses.subList(start, end);
+
+        return new PageImpl<>(
+                pageContent,
+                pageable,
+                responses.size()
+        );
     }
+
     @Transactional
     public DoctorResponse update(
             Long doctorId,
             DoctorUpdateRequest request,
             String adminEmail
     ) {
-        User admin = userRepository.findByEmail(adminEmail)
-                .orElseThrow(() ->
-                        new IllegalArgumentException("Admin user not found")
-                );
+        InternalUserResponse admin =
+                userServiceClient.findByEmail(adminEmail);
 
         Doctor doctor = doctorRepository.findById(doctorId)
                 .orElseThrow(() ->
@@ -233,7 +247,7 @@ public class DoctorService {
                 "DOCTOR",
                 updatedDoctor.getId(),
                 "Doctor id " + updatedDoctor.getId()
-                        + " updated by admin id " + admin.getId()
+                        + " updated by admin id " + admin.id()
         );
 
         return toResponse(updatedDoctor);
