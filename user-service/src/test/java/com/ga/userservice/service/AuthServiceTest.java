@@ -1,13 +1,16 @@
 
 package com.ga.userservice.service;
 
+import com.ga.userservice.dto.request.ForgotPasswordRequest;
 import com.ga.userservice.dto.request.LoginRequest;
 import com.ga.userservice.dto.request.RegisterRequest;
+import com.ga.userservice.dto.request.ResetPasswordRequest;
 import com.ga.userservice.dto.response.LoginResponse;
 import com.ga.userservice.dto.response.UserResponse;
 import com.ga.userservice.event.UserEmailNotificationEvent;
 import com.ga.userservice.exception.ResourceConflictException;
 import com.ga.userservice.model.entity.EmailVerificationToken;
+import com.ga.userservice.model.entity.PasswordResetToken;
 import com.ga.userservice.model.entity.User;
 import com.ga.userservice.model.enums.UserRole;
 import com.ga.userservice.model.enums.UserStatus;
@@ -20,6 +23,7 @@ import com.ga.userservice.security.MyUserDetails;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -28,6 +32,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -270,5 +275,186 @@ class AuthServiceTest {
         verify(emailVerificationTokenRepository, never())
                 .delete(any(EmailVerificationToken.class));
     }
+
+
+    @Test
+    void forgotPasswordShouldCreateTokenAndPublishNotification() {
+
+        User user = new User();
+        user.setId(1L);
+        user.setEmail("patient@example.com");
+
+        ForgotPasswordRequest request = new ForgotPasswordRequest();
+        request.setEmail("patient@example.com");
+
+        when(userRepository.findByEmail("patient@example.com"))
+                .thenReturn(Optional.of(user));
+
+        ReflectionTestUtils.setField(
+                authService,
+                "publicBaseUrl",
+                "http://localhost:8081"
+        );
+
+        LocalDateTime before = LocalDateTime.now();
+
+        authService.forgotPassword(request);
+
+        ArgumentCaptor<PasswordResetToken> tokenCaptor =
+                ArgumentCaptor.forClass(PasswordResetToken.class);
+
+        verify(passwordResetTokenRepository).deleteByUserId(1L);
+        verify(passwordResetTokenRepository).save(tokenCaptor.capture());
+
+        PasswordResetToken savedToken = tokenCaptor.getValue();
+
+        assertNotNull(savedToken.getToken());
+        assertEquals(user, savedToken.getUser());
+        assertTrue(savedToken.getExpiresAt().isAfter(before.plusMinutes(29)));
+        assertTrue(savedToken.getExpiresAt().isBefore(before.plusMinutes(31)));
+
+        ArgumentCaptor<UserEmailNotificationEvent> eventCaptor =
+                ArgumentCaptor.forClass(UserEmailNotificationEvent.class);
+
+        verify(eventPublisher).publishEvent(eventCaptor.capture());
+
+        UserEmailNotificationEvent event = eventCaptor.getValue();
+
+        assertEquals("PASSWORD_RESET", event.eventType());
+        assertEquals("patient@example.com", event.recipientEmail());
+        assertTrue(event.body().contains(savedToken.getToken()));
+        assertTrue(event.body().contains("http://localhost:8081/api/auth/reset-password"));
+
+        verify(auditLogService).log(
+                eq(user),
+                eq("USER_FORGET_PASSWORD"),
+                eq("USER"),
+                eq(1L),
+                anyString()
+        );
+    }
+
+    @Test
+    void forgotPasswordShouldRejectUnknownEmail() {
+
+        ForgotPasswordRequest request = new ForgotPasswordRequest();
+        request.setEmail("unknown@example.com");
+
+        when(userRepository.findByEmail("unknown@example.com"))
+                .thenReturn(Optional.empty());
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> authService.forgotPassword(request)
+        );
+
+        assertEquals("No user found with this email", exception.getMessage());
+
+        verifyNoInteractions(
+                passwordResetTokenRepository,
+                eventPublisher,
+                auditLogService
+        );
+    }
+
+    @Test
+    void resetPasswordShouldUpdatePasswordAndDeleteToken() {
+
+        User user = new User();
+        user.setId(1L);
+        user.setPassword("old-encoded-password");
+
+        PasswordResetToken token = new PasswordResetToken();
+        token.setToken("valid-reset-token");
+        token.setUser(user);
+        token.setExpiresAt(LocalDateTime.now().plusMinutes(20));
+
+        ResetPasswordRequest request = new ResetPasswordRequest();
+        request.setToken("valid-reset-token");
+        request.setNewPassword("NewPassword123");
+
+        when(passwordResetTokenRepository.findByToken("valid-reset-token"))
+                .thenReturn(Optional.of(token));
+
+        when(passwordEncoder.encode("NewPassword123"))
+                .thenReturn("new-encoded-password");
+
+        authService.resetPassword(request);
+
+        assertEquals("new-encoded-password", user.getPassword());
+
+        verify(userRepository).save(user);
+        verify(passwordResetTokenRepository).delete(token);
+
+        verify(auditLogService).log(
+                eq(user),
+                eq("PASSWORD_RESET"),
+                eq("USER"),
+                eq(1L),
+                anyString()
+        );
+    }
+
+    @Test
+    void resetPasswordShouldRejectInvalidToken() {
+
+        ResetPasswordRequest request = new ResetPasswordRequest();
+        request.setToken("invalid-token");
+        request.setNewPassword("NewPassword123");
+
+        when(passwordResetTokenRepository.findByToken("invalid-token"))
+                .thenReturn(Optional.empty());
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> authService.resetPassword(request)
+        );
+
+        assertEquals(
+                "Invalid password reset token",
+                exception.getMessage()
+        );
+
+        verify(userRepository, never()).save(any(User.class));
+        verify(passwordResetTokenRepository, never())
+                .delete(any(PasswordResetToken.class));
+    }
+
+    @Test
+    void resetPasswordShouldRejectExpiredToken() {
+
+        User user = new User();
+        user.setId(1L);
+        user.setPassword("old-encoded-password");
+
+        PasswordResetToken token = new PasswordResetToken();
+        token.setToken("expired-token");
+        token.setUser(user);
+        token.setExpiresAt(LocalDateTime.now().minusMinutes(5));
+
+        ResetPasswordRequest request = new ResetPasswordRequest();
+        request.setToken("expired-token");
+        request.setNewPassword("NewPassword123");
+
+        when(passwordResetTokenRepository.findByToken("expired-token"))
+                .thenReturn(Optional.of(token));
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> authService.resetPassword(request)
+        );
+
+        assertEquals(
+                "Password reset token has expired",
+                exception.getMessage()
+        );
+
+        assertEquals("old-encoded-password", user.getPassword());
+
+        verify(userRepository, never()).save(any(User.class));
+        verify(passwordResetTokenRepository, never())
+                .delete(any(PasswordResetToken.class));
+    }
+
 
 }
