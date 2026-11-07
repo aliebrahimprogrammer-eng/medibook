@@ -48,6 +48,9 @@ class WaitlistAllocationProcessorTest {
     @MockitoBean
     private PersistentNotificationService persistentNotificationService;
 
+    @MockitoBean
+    private AuditLogService auditLogService;
+
     @Test
     void concurrentJobsMustNotAllocateTheSameSlotTwice()
             throws Exception {
