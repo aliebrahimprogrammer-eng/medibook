@@ -15,6 +15,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import jakarta.servlet.DispatcherType;
 
 import java.util.List;
 
@@ -47,6 +48,9 @@ public class SecurityConfiguration {
                 )
                 .authorizeHttpRequests(auth -> auth
 
+                        // Allow Spring error dispatches to preserve the original HTTP status
+                        .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
+
                         // Public authentication endpoints
                         .requestMatchers(
                                 "/api/auth/register",
@@ -69,6 +73,9 @@ public class SecurityConfiguration {
                         .requestMatchers(
                                 "/api/auth/change-password"
                         ).authenticated()
+
+                        // Internal service endpoints authenticate using an API key
+                        .requestMatchers("/internal/**").permitAll()
 
                         // All other endpoints still require authentication
                         .anyRequest().authenticated()
