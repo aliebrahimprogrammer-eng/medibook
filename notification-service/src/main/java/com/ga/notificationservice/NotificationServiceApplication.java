@@ -1,4 +1,4 @@
-package com.ga.notification_service;
+package com.ga.notificationservice;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
