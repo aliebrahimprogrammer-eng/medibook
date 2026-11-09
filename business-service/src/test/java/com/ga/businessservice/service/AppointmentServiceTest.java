@@ -2,11 +2,14 @@ package com.ga.businessservice.service;
 
 import com.ga.businessservice.dto.request.AppointmentRequest;
 import com.ga.businessservice.dto.response.InternalUserResponse;
+import com.ga.businessservice.entity.Appointment;
 import com.ga.businessservice.entity.Availability;
 import com.ga.businessservice.entity.Doctor;
 import com.ga.businessservice.repository.AppointmentRepository;
 import com.ga.businessservice.repository.AvailabilityRepository;
 import com.ga.businessservice.repository.DoctorRepository;
+import com.ga.businessservice.exception.ResourceConflictException;
+import com.ga.businessservice.model.enums.AppointmentStatus;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -187,5 +190,77 @@ class AppointmentServiceTest {
         verify(doctorRepository).findByIdForUpdate(10L);
         verify(availabilityRepository).findByDoctorId(10L);
         verify(appointmentRepository, never()).save(any());
+    }
+
+    @Test
+    void shouldRejectDoubleBooking() {
+
+        InternalUserResponse activePatient = new InternalUserResponse(
+                1L,
+                "patient@medibook.com",
+                "PATIENT",
+                "ACTIVE",
+                true,
+                "Test",
+                "Patient"
+        );
+
+        LocalDateTime start = LocalDateTime.now()
+                .plusDays(1)
+                .withHour(10)
+                .withMinute(0)
+                .withSecond(0)
+                .withNano(0);
+
+        LocalDateTime end = start.plusHours(1);
+
+        Doctor doctor = new Doctor();
+        doctor.setId(10L);
+        doctor.setUserId(20L);
+
+        Availability availability = new Availability();
+        availability.setDoctor(doctor);
+        availability.setStartDateTime(start.minusHours(1));
+        availability.setEndDateTime(end.plusHours(1));
+
+        Appointment existingAppointment = new Appointment();
+        existingAppointment.setId(100L);
+        existingAppointment.setDoctor(doctor);
+        existingAppointment.setPatientId(2L);
+        existingAppointment.setStartDateTime(start);
+        existingAppointment.setEndDateTime(end);
+        existingAppointment.setStatus(AppointmentStatus.CONFIRMED);
+
+        AppointmentRequest request = new AppointmentRequest();
+        request.setDoctorId(10L);
+        request.setStartDateTime(start);
+        request.setEndDateTime(end);
+        request.setReason("General consultation");
+
+        when(userServiceClient.findByEmail("patient@medibook.com"))
+                .thenReturn(activePatient);
+
+        when(doctorRepository.findByIdForUpdate(10L))
+                .thenReturn(Optional.of(doctor));
+
+        when(availabilityRepository.findByDoctorId(10L))
+                .thenReturn(List.of(availability));
+
+        when(appointmentRepository.findOverlappingAppointments(
+                10L,
+                start,
+                end,
+                AppointmentStatus.CANCELLED
+        )).thenReturn(List.of(existingAppointment));
+
+        assertThrows(
+                ResourceConflictException.class,
+                () -> appointmentService.create(
+                        "patient@medibook.com",
+                        request
+                )
+        );
+
+        verify(appointmentRepository, never()).save(any(Appointment.class));
     }
 }
