@@ -2,16 +2,24 @@ package com.ga.businessservice.service;
 
 import com.ga.businessservice.dto.request.AppointmentRequest;
 import com.ga.businessservice.dto.response.InternalUserResponse;
+import com.ga.businessservice.entity.Availability;
+import com.ga.businessservice.entity.Doctor;
 import com.ga.businessservice.repository.AppointmentRepository;
 import com.ga.businessservice.repository.AvailabilityRepository;
 import com.ga.businessservice.repository.DoctorRepository;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -47,20 +55,37 @@ class AppointmentServiceTest {
     @InjectMocks
     private AppointmentService appointmentService;
 
+    @BeforeEach
+    void setUp() {
+        TransactionSynchronizationManager.initSynchronization();
+    }
+
+    @AfterEach
+    void tearDown() {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.getSynchronizations()
+                    .forEach(sync ->
+                            sync.afterCompletion(
+                                    TransactionSynchronization.STATUS_ROLLED_BACK
+                            )
+                    );
+
+            TransactionSynchronizationManager.clearSynchronization();
+        }
+    }
+
     @Test
     void shouldRejectInactivePatientFromCreatingAppointment() {
 
-        // Arrange: simulate an inactive patient returned by User Service.
-        InternalUserResponse inactivePatient =
-                new InternalUserResponse(
-                        1L,
-                        "patient@medibook.com",
-                        "PATIENT",
-                        "INACTIVE",
-                        true,
-                        "Test",
-                        "Patient"
-                );
+        InternalUserResponse inactivePatient = new InternalUserResponse(
+                1L,
+                "patient@medibook.com",
+                "PATIENT",
+                "INACTIVE",
+                true,
+                "Test",
+                "Patient"
+        );
 
         LocalDateTime start = LocalDateTime.now()
                 .plusDays(1)
@@ -78,27 +103,18 @@ class AppointmentServiceTest {
         when(userServiceClient.findByEmail("patient@medibook.com"))
                 .thenReturn(inactivePatient);
 
-        // Act: attempt to create an appointment.
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
-                () -> appointmentService.create(
-                        "patient@medibook.com",
-                        request
-                )
+                () -> appointmentService.create("patient@medibook.com", request)
         );
 
-        // Assert: the original business rule is preserved.
         assertEquals(
                 "Inactive users cannot create appointments",
                 exception.getMessage()
         );
 
-        // The request must stop before doctor lookup or appointment creation.
-        verify(doctorRepository, never())
-                .findByIdForUpdate(anyLong());
-
-        verify(appointmentRepository, never())
-                .save(any());
+        verify(doctorRepository, never()).findByIdForUpdate(anyLong());
+        verify(appointmentRepository, never()).save(any());
 
         verifyNoInteractions(
                 availabilityRepository,
@@ -107,5 +123,69 @@ class AppointmentServiceTest {
                 appointmentEventPublisher,
                 backgroundJobService
         );
+    }
+
+    @Test
+    void shouldRejectAppointmentOutsideDoctorAvailability() {
+
+        InternalUserResponse activePatient = new InternalUserResponse(
+                1L,
+                "patient@medibook.com",
+                "PATIENT",
+                "ACTIVE",
+                true,
+                "Test",
+                "Patient"
+        );
+
+        LocalDateTime availabilityStart = LocalDateTime.now()
+                .plusDays(1)
+                .withHour(9)
+                .withMinute(0)
+                .withSecond(0)
+                .withNano(0);
+
+        LocalDateTime availabilityEnd = availabilityStart.plusHours(1);
+
+        // Requested appointment is outside the doctor's 9:00–10:00 availability.
+        LocalDateTime appointmentStart = availabilityStart.plusHours(2);
+
+        AppointmentRequest request = new AppointmentRequest();
+        request.setDoctorId(10L);
+        request.setStartDateTime(appointmentStart);
+        request.setEndDateTime(appointmentStart.plusHours(1));
+        request.setReason("General consultation");
+
+        Doctor doctor = new Doctor();
+        doctor.setId(10L);
+        doctor.setUserId(20L);
+
+        Availability availability = new Availability();
+        availability.setDoctor(doctor);
+        availability.setStartDateTime(availabilityStart);
+        availability.setEndDateTime(availabilityEnd);
+
+        when(userServiceClient.findByEmail("patient@medibook.com"))
+                .thenReturn(activePatient);
+
+        when(doctorRepository.findByIdForUpdate(10L))
+                .thenReturn(Optional.of(doctor));
+
+        when(availabilityRepository.findByDoctorId(10L))
+                .thenReturn(List.of(availability));
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> appointmentService.create("patient@medibook.com", request)
+        );
+
+        assertEquals(
+                "Appointment is outside the doctor's availability",
+                exception.getMessage()
+        );
+
+        verify(doctorRepository).findByIdForUpdate(10L);
+        verify(availabilityRepository).findByDoctorId(10L);
+        verify(appointmentRepository, never()).save(any());
     }
 }
