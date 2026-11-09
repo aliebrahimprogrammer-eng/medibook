@@ -263,4 +263,50 @@ class AppointmentServiceTest {
 
         verify(appointmentRepository, never()).save(any(Appointment.class));
     }
+
+    @Test
+    void shouldAllowPatientToCancelOwnAppointment() {
+
+        InternalUserResponse patient = new InternalUserResponse(
+                1L, "patient@medibook.com", "PATIENT", "ACTIVE",
+                true, "Test", "Patient"
+        );
+
+        InternalUserResponse doctorUser = new InternalUserResponse(
+                20L, "doctor@medibook.com", "DOCTOR", "ACTIVE",
+                true, "Doctor", "Test"
+        );
+
+        Doctor doctor = new Doctor();
+        doctor.setId(10L);
+        doctor.setUserId(20L);
+
+        Appointment appointment = new Appointment();
+        appointment.setId(100L);
+        appointment.setPatientId(1L);
+        appointment.setDoctor(doctor);
+        appointment.setStartDateTime(LocalDateTime.now().plusDays(1));
+        appointment.setEndDateTime(LocalDateTime.now().plusDays(1).plusHours(1));
+        appointment.setStatus(AppointmentStatus.CONFIRMED);
+        appointment.setReason("General consultation");
+
+        when(userServiceClient.findByEmail("patient@medibook.com"))
+                .thenReturn(patient);
+
+        when(appointmentRepository.findById(100L))
+                .thenReturn(Optional.of(appointment));
+
+        when(doctorRepository.findById(10L))
+                .thenReturn(Optional.of(doctor));
+
+        when(userServiceClient.findById(20L))
+                .thenReturn(doctorUser);
+
+        appointmentService.cancelAppointment(100L, "patient@medibook.com");
+
+        assertEquals(AppointmentStatus.CANCELLED, appointment.getStatus());
+
+        verify(appointmentRepository).save(appointment);
+        verify(backgroundJobService).scheduleWaitlistAllocation(100L);
+    }
 }
