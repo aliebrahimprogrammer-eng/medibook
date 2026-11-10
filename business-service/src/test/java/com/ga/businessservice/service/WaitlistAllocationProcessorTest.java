@@ -172,7 +172,7 @@ class WaitlistAllocationProcessorTest {
         // User IDs are scalar references owned by User Service.
         // No local users table or user records are required.
         Long patientId = 900001L;
-        Long doctorUserId = 900002L;
+        Long doctorUserId = UUID.fromString(unique).getMostSignificantBits() & Long.MAX_VALUE;
 
         Long specializationId = jdbcTemplate.queryForObject("""
                 INSERT INTO specializations

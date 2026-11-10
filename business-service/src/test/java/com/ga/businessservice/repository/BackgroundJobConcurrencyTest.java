@@ -122,7 +122,7 @@ class BackgroundJobConcurrencyTest {
         // User IDs are scalar references owned by the User Service.
         // Business Service does not create or store user records.
         Long patientUserId = 900001L;
-        Long doctorUserId = 900002L;
+        Long doctorUserId = UUID.fromString(unique).getMostSignificantBits() & Long.MAX_VALUE;
 
         Long specializationId = jdbcTemplate.queryForObject("""
                 INSERT INTO specializations
