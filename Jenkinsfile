@@ -24,11 +24,18 @@ pipeline {
 
         stage('Build User Service') {
             steps {
-                withCredentials([usernamePassword(
-                    credentialsId: 'medibook-db',
-                    usernameVariable: 'DB_USERNAME',
-                    passwordVariable: 'DB_PASSWORD'
-                )]) {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'medibook-db',
+                        usernameVariable: 'DB_USERNAME',
+                        passwordVariable: 'DB_PASSWORD'
+                    ),
+                    usernamePassword(
+                        credentialsId: 'medibook-admin',
+                        usernameVariable: 'ADMIN_EMAIL',
+                        passwordVariable: 'ADMIN_PASSWORD'
+                    )
+                ]) {
                     echo 'Building User Service...'
                     sh './mvnw -B -f user-service/pom.xml clean verify'
                 }
@@ -37,11 +44,18 @@ pipeline {
 
         stage('Build Business Service') {
             steps {
-                withCredentials([usernamePassword(
-                    credentialsId: 'medibook-db',
-                    usernameVariable: 'DB_USERNAME',
-                    passwordVariable: 'DB_PASSWORD'
-                )]) {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'medibook-db',
+                        usernameVariable: 'DB_USERNAME',
+                        passwordVariable: 'DB_PASSWORD'
+                    ),
+                    usernamePassword(
+                        credentialsId: 'medibook-admin',
+                        usernameVariable: 'ADMIN_EMAIL',
+                        passwordVariable: 'ADMIN_PASSWORD'
+                    )
+                ]) {
                     echo 'Building Business Service...'
                     sh './mvnw -B -f business-service/pom.xml clean verify'
                 }
@@ -50,11 +64,18 @@ pipeline {
 
         stage('Build Notification Service') {
             steps {
-                withCredentials([usernamePassword(
-                    credentialsId: 'medibook-db',
-                    usernameVariable: 'DB_USERNAME',
-                    passwordVariable: 'DB_PASSWORD'
-                )]) {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'medibook-db',
+                        usernameVariable: 'DB_USERNAME',
+                        passwordVariable: 'DB_PASSWORD'
+                    ),
+                    usernamePassword(
+                        credentialsId: 'medibook-admin',
+                        usernameVariable: 'ADMIN_EMAIL',
+                        passwordVariable: 'ADMIN_PASSWORD'
+                    )
+                ]) {
                     echo 'Building Notification Service...'
                     sh './mvnw -B -f notification-service/pom.xml clean verify'
                 }
