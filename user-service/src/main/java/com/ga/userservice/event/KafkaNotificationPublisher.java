@@ -9,7 +9,13 @@ import org.springframework.transaction.event.TransactionalEventListener;
 import tools.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 
+@ConditionalOnProperty(
+        name = "app.kafka.notifications.enabled",
+        havingValue = "true",
+        matchIfMissing = true
+)
 @Component
 @RequiredArgsConstructor
 public class KafkaNotificationPublisher {
