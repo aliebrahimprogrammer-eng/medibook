@@ -1,11 +1,13 @@
+
 pipeline {
     agent any
 
     tools {
         jdk 'jdk17'
     }
+
     environment {
-        SPRING_DATASOURCE_URL = 'jdbc:postgresql://host.docker.internal:5432/medibook_test'
+        SPRING_DATASOURCE_URL = 'jdbc:postgresql://host.docker.internal:5433/medibook_test'
     }
 
     options {
@@ -19,7 +21,6 @@ pipeline {
                 sh 'chmod +x mvnw'
             }
         }
-
 
         stage('Build User Service') {
             steps {
@@ -35,31 +36,31 @@ pipeline {
         }
 
         stage('Build Business Service') {
-                    steps {
-                        withCredentials([usernamePassword(
-                            credentialsId: 'medibook-db',
-                            usernameVariable: 'DB_USERNAME',
-                            passwordVariable: 'DB_PASSWORD'
-                        )]) {
-                            echo 'Building Business Service...'
-                            sh './mvnw -B -f business-service/pom.xml clean verify'
-                        }
-                    }
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'medibook-db',
+                    usernameVariable: 'DB_USERNAME',
+                    passwordVariable: 'DB_PASSWORD'
+                )]) {
+                    echo 'Building Business Service...'
+                    sh './mvnw -B -f business-service/pom.xml clean verify'
                 }
+            }
+        }
 
-         stage('Build Notification Service') {
-                            steps {
-                                withCredentials([usernamePassword(
-                                    credentialsId: 'medibook-db',
-                                    usernameVariable: 'DB_USERNAME',
-                                    passwordVariable: 'DB_PASSWORD'
-                                )]) {
-                                    echo 'Building Notification Service...'
-                                    sh './mvnw -B -f notification-service/pom.xml clean verify'
-                                }
-                            }
-                        }
-
+        stage('Build Notification Service') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'medibook-db',
+                    usernameVariable: 'DB_USERNAME',
+                    passwordVariable: 'DB_PASSWORD'
+                )]) {
+                    echo 'Building Notification Service...'
+                    sh './mvnw -B -f notification-service/pom.xml clean verify'
+                }
+            }
+        }
+    }
 
     post {
         always {
