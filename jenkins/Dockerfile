@@ -1,4 +1,4 @@
-﻿FROM docker:cli AS docker-cli
+FROM docker:cli AS docker-cli
 
 FROM jenkins/jenkins:lts
 
