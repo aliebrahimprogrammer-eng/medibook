@@ -39,3 +39,6 @@ build/
 
 # User uploaded files
 /uploads/**
+
+#Jenkins configuration backup
+jenkins-home-backup-*.tar.gz

@@ -1,5 +1,4 @@
-
-pipeline {
+﻿pipeline {
     agent any
 
     tools {
@@ -81,6 +80,40 @@ pipeline {
                 }
             }
         }
+
+        stage('Build Docker Images') {
+            steps {
+                echo 'Building MediBook Docker images...'
+
+                sh '''
+                    set -eu
+
+                    docker build \
+                        -t medibook-user-service:${BUILD_NUMBER} \
+                        -t medibook-user-service:latest \
+                        ./user-service
+
+                    docker build \
+                        -t medibook-business-service:${BUILD_NUMBER} \
+                        -t medibook-business-service:latest \
+                        ./business-service
+
+                    docker build \
+                        -t medibook-notification-service:${BUILD_NUMBER} \
+                        -t medibook-notification-service:latest \
+                        ./notification-service
+
+                    echo "Verifying Docker images..."
+
+                    docker image inspect \
+                        medibook-user-service:${BUILD_NUMBER} \
+                        medibook-business-service:${BUILD_NUMBER} \
+                        medibook-notification-service:${BUILD_NUMBER}
+
+                    echo "All three Docker images built successfully!"
+                '''
+            }
+        }
     }
 
     post {
@@ -90,7 +123,7 @@ pipeline {
         }
 
         success {
-            echo 'All MediBook services built successfully!'
+            echo 'All MediBook services built and tested successfully!'
         }
 
         failure {
