@@ -42,3 +42,7 @@ build/
 
 #Jenkins configuration backup
 jenkins-home-backup-*.tar.gz
+
+# AWS deployment artifacts
+aws-deployment/*.zip
+aws-deployment/.env
