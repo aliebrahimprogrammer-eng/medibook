@@ -2,6 +2,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { API_ENDPOINTS } from '../core/api.config';
 
 export interface AppointmentRequest {
   doctorId: number;
@@ -39,7 +40,7 @@ export interface AppointmentPage {
 })
 export class AppointmentService {
   private readonly http = inject(HttpClient);
-  private readonly apiUrl = 'http://localhost:8080/api/appointments';
+  private readonly apiUrl = API_ENDPOINTS.appointments;
 
   createAppointment(
     request: AppointmentRequest,

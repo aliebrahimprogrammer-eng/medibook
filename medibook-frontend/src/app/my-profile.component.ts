@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
+import { API_ENDPOINTS } from './core/api.config';
 import {
   ProfileService,
   UserProfile,
@@ -191,7 +192,7 @@ export class MyProfileComponent implements OnInit {
 
     // Assumes the backend serves uploaded files from /uploads/.
     // Adjust this path if your Spring Boot resource mapping is different.
-    return `http://localhost:8080/uploads/${encodeURIComponent(filename)}`;
+    return `${API_ENDPOINTS.uploads}/${encodeURIComponent(filename)}`;
   }
 
   goBack(): void {

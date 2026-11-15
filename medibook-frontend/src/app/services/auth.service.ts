@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, tap } from 'rxjs';
+import { API_ENDPOINTS } from '../core/api.config';
 
 export interface LoginRequest {
   email: string;
@@ -17,7 +18,7 @@ export interface LoginResponse {
 export class AuthService {
   private readonly http = inject(HttpClient);
 
-  private readonly apiUrl = 'http://localhost:8080/api/auth';
+  private readonly apiUrl = API_ENDPOINTS.auth;
 
   login(credentials: LoginRequest): Observable<LoginResponse> {
     return this.http

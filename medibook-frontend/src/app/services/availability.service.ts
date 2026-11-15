@@ -2,6 +2,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { API_ENDPOINTS } from '../core/api.config';
 
 export interface Availability {
   id: number;
@@ -31,8 +32,7 @@ export interface AvailabilityRequest {
 export class AvailabilityService {
   private readonly http = inject(HttpClient);
 
-  private readonly apiUrl =
-    'http://localhost:8080/api/availabilities';
+  private readonly apiUrl = API_ENDPOINTS.availabilities;
 
   getDoctorAvailability(
     doctorId: number,

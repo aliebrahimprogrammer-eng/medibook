@@ -88,7 +88,7 @@
         </div>
       } @else if (logs().length > 0) {
         <div class="log-list">
-          @for (log of logs(); track log.id) {
+          @for (log of logs(); track log.source + '-' + log.id) {
             <article class="log-entry">
               <div class="timeline">
                 <span class="timeline-dot"></span>

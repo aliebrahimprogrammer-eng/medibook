@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { API_ENDPOINTS } from '../core/api.config';
 
 export interface Specialization {
   id: number;
@@ -14,7 +15,7 @@ export interface Specialization {
 export class SpecializationService {
   private readonly http = inject(HttpClient);
 
-  private readonly apiUrl = 'http://localhost:8080/api/specializations';
+  private readonly apiUrl = API_ENDPOINTS.specializations;
 
   getAll(): Observable<Specialization[]> {
     return this.http.get<Specialization[]>(this.apiUrl);

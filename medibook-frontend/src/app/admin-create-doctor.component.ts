@@ -5,6 +5,7 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
+import { API_ENDPOINTS } from './core/api.config';
 import {
   AdminUser,
   AdminUserService,
@@ -44,10 +45,9 @@ export class AdminCreateDoctorComponent implements OnInit {
   private readonly http = inject(HttpClient);
   private readonly adminUserService = inject(AdminUserService);
 
-  private readonly specializationsUrl =
-    'http://localhost:8080/api/specializations';
+  private readonly specializationsUrl = API_ENDPOINTS.specializations;
 
-  private readonly doctorsUrl = 'http://localhost:8080/api/doctors';
+  private readonly doctorsUrl = API_ENDPOINTS.doctors;
 
   readonly isLoading = signal(true);
   readonly isSubmitting = signal(false);
