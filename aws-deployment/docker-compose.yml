@@ -1,6 +1,6 @@
 ﻿services:
   user-service:
-    image: 798645002363.dkr.ecr.eu-north-1.amazonaws.com/medibook-user-service:27
+    image: 798645002363.dkr.ecr.eu-north-1.amazonaws.com/medibook-user-service:28
     container_name: medibook-user-service
     restart: unless-stopped
     environment:
@@ -22,7 +22,7 @@
     mem_limit: 512m
 
   business-service:
-    image: 798645002363.dkr.ecr.eu-north-1.amazonaws.com/medibook-business-service:27
+    image: 798645002363.dkr.ecr.eu-north-1.amazonaws.com/medibook-business-service:28
     container_name: medibook-business-service
     restart: unless-stopped
     environment:
@@ -43,7 +43,7 @@
     mem_limit: 512m
 
   notification-service:
-    image: 798645002363.dkr.ecr.eu-north-1.amazonaws.com/medibook-notification-service:27
+    image: 798645002363.dkr.ecr.eu-north-1.amazonaws.com/medibook-notification-service:28
     container_name: medibook-notification-service
     restart: unless-stopped
     environment:
