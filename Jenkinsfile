@@ -6,7 +6,7 @@ pipeline {
     }
 
     environment {
-        SPRING_DATASOURCE_URL = 'jdbc:postgresql://host.docker.internal:5433/medibook_test'
+        SPRING_DATASOURCE_URL = 'jdbc:postgresql://localhost:5433/medibook_test'
         AWS_REGION = 'eu-north-1'
         ECR_REGISTRY = '798645002363.dkr.ecr.eu-north-1.amazonaws.com'
     }
