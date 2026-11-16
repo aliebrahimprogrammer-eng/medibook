@@ -169,6 +169,32 @@ pipeline {
                 }
             }
         }
+
+        stage('Verify Elastic Beanstalk Access') {
+            steps {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'aws-ecr-credentials',
+                        usernameVariable: 'AWS_ACCESS_KEY_ID',
+                        passwordVariable: 'AWS_SECRET_ACCESS_KEY'
+                    )
+                ]) {
+                    sh '''
+                        set -eu
+
+                        docker run --rm \
+                            -e AWS_ACCESS_KEY_ID \
+                            -e AWS_SECRET_ACCESS_KEY \
+                            -e AWS_DEFAULT_REGION="$AWS_REGION" \
+                            public.ecr.aws/aws-cli/aws-cli:latest \
+                            elasticbeanstalk describe-environments \
+                            --environment-names medibook-env \
+                            --query "Environments[0].[ApplicationName,EnvironmentName,VersionLabel,Status,Health]" \
+                            --output table
+                    '''
+                }
+            }
+        }
     }
 
     post {
