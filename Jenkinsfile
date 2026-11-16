@@ -188,13 +188,137 @@ pipeline {
                             -e AWS_DEFAULT_REGION="$AWS_REGION" \
                             public.ecr.aws/aws-cli/aws-cli:latest \
                             elasticbeanstalk describe-environments \
-                            --environment-names medibook-env \
+                            --environment-names Medibook-env \
                             --query "Environments[0].[ApplicationName,EnvironmentName,VersionLabel,Status,Health]" \
                             --output table
                     '''
                 }
             }
         }
+
+
+        stage('Package Elastic Beanstalk Deployment') {
+            steps {
+                echo 'Preparing Elastic Beanstalk deployment package...'
+
+                sh '''
+                    set -eu
+
+                    rm -rf deployment-package
+                    mkdir -p deployment-package
+
+                    cp -R aws-deployment/. deployment-package/
+
+                    # Frontend files are not part of this backend deployment.
+                    rm -rf deployment-package/frontend
+                    rm -f deployment-package/.env.example
+
+                    # Use the current Jenkins build number for all service images.
+                    sed -i "s/:28$/:${BUILD_NUMBER}/" \
+                        deployment-package/docker-compose.yml
+
+                    echo "Checking deployment image tags..."
+                    grep 'image:' deployment-package/docker-compose.yml
+
+                    # Create ZIP with the correct Elastic Beanstalk root structure.
+                    docker run --rm \
+                        -v "$PWD:/work" \
+                        -w /work \
+                        alpine:3.21 \
+                        sh -c "apk add --no-cache zip && cd deployment-package && zip -r ../medibook-eb-${BUILD_NUMBER}.zip ."
+
+                    echo "Deployment package created."
+                '''
+            }
+        }
+
+        stage('Deploy to Elastic Beanstalk') {
+            steps {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'aws-ecr-credentials',
+                        usernameVariable: 'AWS_ACCESS_KEY_ID',
+                        passwordVariable: 'AWS_SECRET_ACCESS_KEY'
+                    )
+                ]) {
+                    sh '''
+                        set -eu
+
+                        VERSION_LABEL="medibook-${BUILD_NUMBER}"
+                        S3_KEY="deployments/${VERSION_LABEL}.zip"
+
+                        echo "Finding Elastic Beanstalk deployment bucket..."
+
+                        S3_BUCKET=$(docker run --rm \
+                            -e AWS_ACCESS_KEY_ID \
+                            -e AWS_SECRET_ACCESS_KEY \
+                            -e AWS_DEFAULT_REGION="$AWS_REGION" \
+                            public.ecr.aws/aws-cli/aws-cli:latest \
+                            elasticbeanstalk create-storage-location \
+                            --query S3Bucket \
+                            --output text)
+
+                        echo "Uploading deployment package to S3..."
+
+                        docker run --rm \
+                            -v "$PWD:/work" \
+                            -w /work \
+                            -e AWS_ACCESS_KEY_ID \
+                            -e AWS_SECRET_ACCESS_KEY \
+                            -e AWS_DEFAULT_REGION="$AWS_REGION" \
+                            public.ecr.aws/aws-cli/aws-cli:latest \
+                            s3 cp "medibook-eb-${BUILD_NUMBER}.zip" \
+                            "s3://${S3_BUCKET}/${S3_KEY}"
+
+                        echo "Creating Elastic Beanstalk application version..."
+
+                        docker run --rm \
+                            -e AWS_ACCESS_KEY_ID \
+                            -e AWS_SECRET_ACCESS_KEY \
+                            -e AWS_DEFAULT_REGION="$AWS_REGION" \
+                            public.ecr.aws/aws-cli/aws-cli:latest \
+                            elasticbeanstalk create-application-version \
+                            --application-name medibook \
+                            --version-label "$VERSION_LABEL" \
+                            --source-bundle S3Bucket="$S3_BUCKET",S3Key="$S3_KEY"
+
+                        echo "Deploying ${VERSION_LABEL}..."
+
+                        docker run --rm \
+                            -e AWS_ACCESS_KEY_ID \
+                            -e AWS_SECRET_ACCESS_KEY \
+                            -e AWS_DEFAULT_REGION="$AWS_REGION" \
+                            public.ecr.aws/aws-cli/aws-cli:latest \
+                            elasticbeanstalk update-environment \
+                            --environment-name Medibook-env \
+                            --version-label "$VERSION_LABEL"
+
+                        echo "Waiting for deployment to finish..."
+
+                        docker run --rm \
+                            -e AWS_ACCESS_KEY_ID \
+                            -e AWS_SECRET_ACCESS_KEY \
+                            -e AWS_DEFAULT_REGION="$AWS_REGION" \
+                            public.ecr.aws/aws-cli/aws-cli:latest \
+                            elasticbeanstalk wait environment-updated \
+                            --environment-names Medibook-env
+
+                        echo "Checking deployment health..."
+
+                        docker run --rm \
+                            -e AWS_ACCESS_KEY_ID \
+                            -e AWS_SECRET_ACCESS_KEY \
+                            -e AWS_DEFAULT_REGION="$AWS_REGION" \
+                            public.ecr.aws/aws-cli/aws-cli:latest \
+                            elasticbeanstalk describe-environments \
+                            --environment-names Medibook-env \
+                            --query "Environments[0].[VersionLabel,Status,Health]" \
+                            --output table
+                    '''
+                }
+            }
+        }
+
     }
 
     post {
