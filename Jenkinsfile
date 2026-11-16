@@ -126,11 +126,10 @@ pipeline {
                         passwordVariable: 'AWS_SECRET_ACCESS_KEY'
                     )
                 ]) {
-                    sh '''
-                        #!/bin/bash
-                        set -euo pipefail
+                    sh '''#!/bin/bash
+                    set -euo pipefail
 
-                        echo "Authenticating with AWS ECR..."
+                    echo "Authenticating with AWS ECR..."
 
                         docker run --rm \
                             -e AWS_ACCESS_KEY_ID \
