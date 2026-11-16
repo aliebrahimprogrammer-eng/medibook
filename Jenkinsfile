@@ -304,15 +304,47 @@ pipeline {
 
                         echo "Checking deployment health..."
 
-                        docker run --rm \
-                            -e AWS_ACCESS_KEY_ID \
-                            -e AWS_SECRET_ACCESS_KEY \
-                            -e AWS_DEFAULT_REGION="$AWS_REGION" \
-                            public.ecr.aws/aws-cli/aws-cli:latest \
-                            elasticbeanstalk describe-environments \
-                            --environment-names Medibook-env \
-                            --query "Environments[0].[VersionLabel,Status,Health]" \
-                            --output table
+                        DEPLOYMENT_RESULT=$(docker run --rm \\
+                            -e AWS_ACCESS_KEY_ID \\
+                            -e AWS_SECRET_ACCESS_KEY \\
+                            -e AWS_DEFAULT_REGION="$AWS_REGION" \\
+                            public.ecr.aws/aws-cli/aws-cli:latest \\
+                            elasticbeanstalk describe-environments \\
+                            --environment-names Medibook-env \\
+                            --query "Environments[0].[VersionLabel,Status,Health]" \\
+                            --output text)
+
+                        echo "Deployment result: $DEPLOYMENT_RESULT"
+
+                        # AWS CLI returns the three fields as tab-separated values.
+                        set -- $DEPLOYMENT_RESULT
+
+                        if [ "$#" -ne 3 ]; then
+                            echo "ERROR: Could not read the Elastic Beanstalk deployment status."
+                            exit 1
+                        fi
+
+                        DEPLOYED_VERSION="$1"
+                        DEPLOYMENT_STATUS="$2"
+                        DEPLOYMENT_HEALTH="$3"
+
+                        if [ "$DEPLOYED_VERSION" != "$VERSION_LABEL" ]; then
+                            echo "ERROR: Expected version $VERSION_LABEL, but found $DEPLOYED_VERSION."
+                            exit 1
+                        fi
+
+                        if [ "$DEPLOYMENT_STATUS" != "Ready" ]; then
+                            echo "ERROR: Elastic Beanstalk status is $DEPLOYMENT_STATUS, expected Ready."
+                            exit 1
+                        fi
+
+                        if [ "$DEPLOYMENT_HEALTH" != "Green" ]; then
+                            echo "ERROR: Elastic Beanstalk health is $DEPLOYMENT_HEALTH, expected Green."
+                            echo "The deployment completed, but the environment is not healthy."
+                            exit 1
+                        fi
+
+                        echo "SUCCESS: $DEPLOYED_VERSION is deployed and Elastic Beanstalk health is Green."
                     '''
                 }
             }
@@ -327,7 +359,7 @@ pipeline {
         }
 
         success {
-            echo 'All MediBook services built, tested and pushed successfully!'
+            echo 'MediBook services built, tested, pushed, deployed, and health-checked successfully!'
         }
 
         failure {
