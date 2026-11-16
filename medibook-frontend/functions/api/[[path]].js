@@ -12,5 +12,14 @@ export async function onRequest({ request, env }) {
   backendUrl.pathname = incomingUrl.pathname;
   backendUrl.search = incomingUrl.search;
 
-  return fetch(new Request(backendUrl.toString(), request));
+  // Forward the request without the browser's Origin header.
+  const originalRequest = new Request(backendUrl.toString(), request);
+  const headers = new Headers(originalRequest.headers);
+  headers.delete("Origin");
+
+  const proxyRequest = new Request(originalRequest, {
+    headers
+  });
+
+  return fetch(proxyRequest);
 }
