@@ -231,124 +231,144 @@ pipeline {
             }
         }
 
-        stage('Deploy to Elastic Beanstalk') {
-            steps {
-                withCredentials([
-                    usernamePassword(
-                        credentialsId: 'aws-ecr-credentials',
-                        usernameVariable: 'AWS_ACCESS_KEY_ID',
-                        passwordVariable: 'AWS_SECRET_ACCESS_KEY'
-                    )
-                ]) {
-                    sh '''
-                        set -eu
 
-                        VERSION_LABEL="medibook-${BUILD_NUMBER}"
-                        S3_KEY="deployments/${VERSION_LABEL}.zip"
+stage('Deploy to Elastic Beanstalk') {
+    steps {
+        withCredentials([
+            usernamePassword(
+                credentialsId: 'aws-ecr-credentials',
+                usernameVariable: 'AWS_ACCESS_KEY_ID',
+                passwordVariable: 'AWS_SECRET_ACCESS_KEY'
+            )
+        ]) {
+            sh '''
+                set -eu
 
-                        echo "Finding Elastic Beanstalk deployment bucket..."
+                VERSION_LABEL="medibook-${BUILD_NUMBER}"
+                S3_KEY="deployments/${VERSION_LABEL}.zip"
 
-                        S3_BUCKET=$(docker run --rm \
-                            -e AWS_ACCESS_KEY_ID \
-                            -e AWS_SECRET_ACCESS_KEY \
-                            -e AWS_DEFAULT_REGION="$AWS_REGION" \
-                            public.ecr.aws/aws-cli/aws-cli:latest \
-                            elasticbeanstalk create-storage-location \
-                            --query S3Bucket \
-                            --output text)
+                echo "Finding Elastic Beanstalk deployment bucket..."
 
-                        echo "Uploading deployment package to S3..."
+                S3_BUCKET=$(docker run --rm \
+                    -e AWS_ACCESS_KEY_ID \
+                    -e AWS_SECRET_ACCESS_KEY \
+                    -e AWS_DEFAULT_REGION="$AWS_REGION" \
+                    public.ecr.aws/aws-cli/aws-cli:latest \
+                    elasticbeanstalk create-storage-location \
+                    --query S3Bucket \
+                    --output text)
 
-                        docker run --rm \
-                            -v "$PWD:/work" \
-                            -w /work \
-                            -e AWS_ACCESS_KEY_ID \
-                            -e AWS_SECRET_ACCESS_KEY \
-                            -e AWS_DEFAULT_REGION="$AWS_REGION" \
-                            public.ecr.aws/aws-cli/aws-cli:latest \
-                            s3 cp "medibook-eb-${BUILD_NUMBER}.zip" \
-                            "s3://${S3_BUCKET}/${S3_KEY}"
+                echo "Uploading deployment package to S3..."
 
-                        echo "Creating Elastic Beanstalk application version..."
+                docker run --rm \
+                    -v "$PWD:/work" \
+                    -w /work \
+                    -e AWS_ACCESS_KEY_ID \
+                    -e AWS_SECRET_ACCESS_KEY \
+                    -e AWS_DEFAULT_REGION="$AWS_REGION" \
+                    public.ecr.aws/aws-cli/aws-cli:latest \
+                    s3 cp "medibook-eb-${BUILD_NUMBER}.zip" \
+                    "s3://${S3_BUCKET}/${S3_KEY}"
 
-                        docker run --rm \
-                            -e AWS_ACCESS_KEY_ID \
-                            -e AWS_SECRET_ACCESS_KEY \
-                            -e AWS_DEFAULT_REGION="$AWS_REGION" \
-                            public.ecr.aws/aws-cli/aws-cli:latest \
-                            elasticbeanstalk create-application-version \
-                            --application-name medibook \
-                            --version-label "$VERSION_LABEL" \
-                            --source-bundle S3Bucket="$S3_BUCKET",S3Key="$S3_KEY"
+                echo "Creating Elastic Beanstalk application version..."
 
-                        echo "Deploying ${VERSION_LABEL}..."
+                docker run --rm \
+                    -e AWS_ACCESS_KEY_ID \
+                    -e AWS_SECRET_ACCESS_KEY \
+                    -e AWS_DEFAULT_REGION="$AWS_REGION" \
+                    public.ecr.aws/aws-cli/aws-cli:latest \
+                    elasticbeanstalk create-application-version \
+                    --application-name medibook \
+                    --version-label "$VERSION_LABEL" \
+                    --source-bundle S3Bucket="$S3_BUCKET",S3Key="$S3_KEY"
 
-                        docker run --rm \
-                            -e AWS_ACCESS_KEY_ID \
-                            -e AWS_SECRET_ACCESS_KEY \
-                            -e AWS_DEFAULT_REGION="$AWS_REGION" \
-                            public.ecr.aws/aws-cli/aws-cli:latest \
-                            elasticbeanstalk update-environment \
-                            --environment-name Medibook-env \
-                            --version-label "$VERSION_LABEL"
+                echo "Deploying ${VERSION_LABEL}..."
 
-                        echo "Waiting for deployment to finish..."
+                docker run --rm \
+                    -e AWS_ACCESS_KEY_ID \
+                    -e AWS_SECRET_ACCESS_KEY \
+                    -e AWS_DEFAULT_REGION="$AWS_REGION" \
+                    public.ecr.aws/aws-cli/aws-cli:latest \
+                    elasticbeanstalk update-environment \
+                    --environment-name Medibook-env \
+                    --version-label "$VERSION_LABEL"
 
-                        docker run --rm \
-                            -e AWS_ACCESS_KEY_ID \
-                            -e AWS_SECRET_ACCESS_KEY \
-                            -e AWS_DEFAULT_REGION="$AWS_REGION" \
-                            public.ecr.aws/aws-cli/aws-cli:latest \
-                            elasticbeanstalk wait environment-updated \
-                            --environment-names Medibook-env
+                echo "Waiting for deployment to finish..."
 
-                        echo "Checking deployment health..."
+                docker run --rm \
+                    -e AWS_ACCESS_KEY_ID \
+                    -e AWS_SECRET_ACCESS_KEY \
+                    -e AWS_DEFAULT_REGION="$AWS_REGION" \
+                    public.ecr.aws/aws-cli/aws-cli:latest \
+                    elasticbeanstalk wait environment-updated \
+                    --environment-names Medibook-env
 
-                        DEPLOYMENT_RESULT=$(docker run --rm \\
-                            -e AWS_ACCESS_KEY_ID \\
-                            -e AWS_SECRET_ACCESS_KEY \\
-                            -e AWS_DEFAULT_REGION="$AWS_REGION" \\
-                            public.ecr.aws/aws-cli/aws-cli:latest \\
-                            elasticbeanstalk describe-environments \\
-                            --environment-names Medibook-env \\
-                            --query "Environments[0].[VersionLabel,Status,Health]" \\
-                            --output text)
+                echo "Deployment update completed."
+                echo "Waiting for Elastic Beanstalk health to become Green..."
 
-                        echo "Deployment result: $DEPLOYMENT_RESULT"
+                MAX_ATTEMPTS=12
+                ATTEMPT=1
+                DEPLOYMENT_HEALTH="Unknown"
 
-                        # AWS CLI returns the three fields as tab-separated values.
-                        set -- $DEPLOYMENT_RESULT
+                while [ "$ATTEMPT" -le "$MAX_ATTEMPTS" ]; do
 
-                        if [ "$#" -ne 3 ]; then
-                            echo "ERROR: Could not read the Elastic Beanstalk deployment status."
-                            exit 1
-                        fi
+                    DEPLOYMENT_RESULT=$(docker run --rm \
+                        -e AWS_ACCESS_KEY_ID \
+                        -e AWS_SECRET_ACCESS_KEY \
+                        -e AWS_DEFAULT_REGION="$AWS_REGION" \
+                        public.ecr.aws/aws-cli/aws-cli:latest \
+                        elasticbeanstalk describe-environments \
+                        --environment-names Medibook-env \
+                        --query "Environments[0].[VersionLabel,Status,Health]" \
+                        --output text)
 
-                        DEPLOYED_VERSION="$1"
-                        DEPLOYMENT_STATUS="$2"
-                        DEPLOYMENT_HEALTH="$3"
+                    echo "Health check ${ATTEMPT}/${MAX_ATTEMPTS}: $DEPLOYMENT_RESULT"
 
-                        if [ "$DEPLOYED_VERSION" != "$VERSION_LABEL" ]; then
-                            echo "ERROR: Expected version $VERSION_LABEL, but found $DEPLOYED_VERSION."
-                            exit 1
-                        fi
+                    set -- $DEPLOYMENT_RESULT
 
-                        if [ "$DEPLOYMENT_STATUS" != "Ready" ]; then
-                            echo "ERROR: Elastic Beanstalk status is $DEPLOYMENT_STATUS, expected Ready."
-                            exit 1
-                        fi
+                    if [ "$#" -ne 3 ]; then
+                        echo "ERROR: Could not read Elastic Beanstalk deployment status."
+                        exit 1
+                    fi
 
-                        if [ "$DEPLOYMENT_HEALTH" != "Green" ]; then
-                            echo "ERROR: Elastic Beanstalk health is $DEPLOYMENT_HEALTH, expected Green."
-                            echo "The deployment completed, but the environment is not healthy."
-                            exit 1
-                        fi
+                    DEPLOYED_VERSION="$1"
+                    DEPLOYMENT_STATUS="$2"
+                    DEPLOYMENT_HEALTH="$3"
 
-                        echo "SUCCESS: $DEPLOYED_VERSION is deployed and Elastic Beanstalk health is Green."
-                    '''
-                }
-            }
+                    if [ "$DEPLOYED_VERSION" != "$VERSION_LABEL" ]; then
+                        echo "ERROR: Expected $VERSION_LABEL but found $DEPLOYED_VERSION."
+                        exit 1
+                    fi
+
+                    if [ "$DEPLOYMENT_HEALTH" = "Red" ] || \
+                       [ "$DEPLOYMENT_HEALTH" = "Severe" ]; then
+                        echo "ERROR: Elastic Beanstalk health is $DEPLOYMENT_HEALTH."
+                        exit 1
+                    fi
+
+                    if [ "$DEPLOYMENT_STATUS" = "Ready" ] && \
+                       [ "$DEPLOYMENT_HEALTH" = "Green" ]; then
+                        echo "SUCCESS: $VERSION_LABEL is deployed and health is Green."
+                        exit 0
+                    fi
+
+                    if [ "$ATTEMPT" -lt "$MAX_ATTEMPTS" ]; then
+                        echo "Environment is not Green yet. Waiting 15 seconds..."
+                        sleep 15
+                    fi
+
+                    ATTEMPT=$((ATTEMPT + 1))
+                done
+
+                echo "ERROR: Elastic Beanstalk did not reach Green health within 3 minutes."
+                echo "Final status: $DEPLOYMENT_STATUS"
+                echo "Final health: $DEPLOYMENT_HEALTH"
+                exit 1
+            '''
         }
+    }
+}
+
 
     }
 
