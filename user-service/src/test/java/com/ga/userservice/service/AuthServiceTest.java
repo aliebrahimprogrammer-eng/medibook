@@ -292,8 +292,8 @@ class AuthServiceTest {
 
         ReflectionTestUtils.setField(
                 authService,
-                "publicBaseUrl",
-                "http://localhost:8081"
+                "frontendBaseUrl",
+                "http://localhost:4200"
         );
 
         LocalDateTime before = LocalDateTime.now();
@@ -323,8 +323,7 @@ class AuthServiceTest {
         assertEquals("PASSWORD_RESET", event.eventType());
         assertEquals("patient@example.com", event.recipientEmail());
         assertTrue(event.body().contains(savedToken.getToken()));
-        assertTrue(event.body().contains("http://localhost:8081/api/auth/reset-password"));
-
+        assertTrue(event.body().contains("http://localhost:4200/reset-password?token="));
         verify(auditLogService).log(
                 eq(user),
                 eq("USER_FORGET_PASSWORD"),
