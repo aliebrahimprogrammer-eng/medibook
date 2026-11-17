@@ -15,11 +15,16 @@ import { AdminCreateDoctorComponent } from './admin-create-doctor.component';
 import { MyProfileComponent } from './my-profile.component';
 import { roleGuard } from './auth.guard';
 import { RegisterComponent } from './register.component';
+import { ForgotPasswordComponent } from './forgot-password.component';
 
 export const routes: Routes = [
   {
     path: 'login',
     component: LoginComponent,
+  },
+  {
+  path: 'forgot-password',
+    component: ForgotPasswordComponent,
   },
   {
   path: 'register',
