@@ -1,14 +1,14 @@
 package com.ga.userservice.service;
 
+import com.ga.userservice.dto.response.AuditLogResponse;
 import com.ga.userservice.model.entity.AuditLog;
 import com.ga.userservice.model.entity.User;
 import com.ga.userservice.repository.AuditLogRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import com.ga.userservice.dto.response.AuditLogResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -27,7 +27,16 @@ public class AuditLogService {
 
         AuditLog auditLog = new AuditLog();
 
-        auditLog.setUser(user);
+        if (user != null) {
+            auditLog.setActorUserId(user.getId());
+            auditLog.setActorEmail(user.getEmail());
+            auditLog.setActorRole(
+                    user.getRole() != null
+                            ? user.getRole().name()
+                            : null
+            );
+        }
+
         auditLog.setAction(action);
         auditLog.setEntityType(entityType);
         auditLog.setEntityId(entityId);
@@ -45,11 +54,8 @@ public class AuditLogService {
         Page<AuditLog> auditLogs;
 
         if (search == null || search.isBlank()) {
-
-            auditLogs = auditLogRepository.findAll(pageable);
-
+            auditLogs = auditLogRepository.findByActorUserIdIsNotNull(pageable);
         } else {
-
             auditLogs = auditLogRepository.search(
                     search.trim(),
                     pageable
@@ -63,9 +69,9 @@ public class AuditLogService {
 
         return new AuditLogResponse(
                 auditLog.getId(),
-                auditLog.getUser().getId(),
-                auditLog.getUser().getEmail(),
-                auditLog.getUser().getRole(),
+                auditLog.getActorUserId(),
+                auditLog.getActorEmail(),
+                auditLog.getActorRole(),
                 auditLog.getAction(),
                 auditLog.getEntityType(),
                 auditLog.getEntityId(),

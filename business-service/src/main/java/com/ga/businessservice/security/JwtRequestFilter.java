@@ -1,3 +1,4 @@
+
 package com.ga.businessservice.security;
 
 import com.ga.businessservice.dto.response.InternalUserResponse;
@@ -32,14 +33,22 @@ public class JwtRequestFilter extends OncePerRequestFilter {
 
         String headerAuth = request.getHeader("Authorization");
 
-        if (StringUtils.hasText(headerAuth) && headerAuth.startsWith("Bearer ")) {
+        if (StringUtils.hasText(headerAuth)
+                && headerAuth.startsWith("Bearer ")) {
+
             String jwt = headerAuth.substring(7);
 
             if (jwtUtils.validateJwtToken(jwt)) {
                 try {
                     String email = jwtUtils.getUserNameFromJwtToken(jwt);
-                    InternalUserResponse user = userServiceClient.findByEmail(email);
-                    BusinessUserDetails userDetails = new BusinessUserDetails(user);
+
+                    logger.info("JWT valid. Resolving user through User Service.");
+
+                    InternalUserResponse user =
+                            userServiceClient.findByEmail(email);
+
+                    BusinessUserDetails userDetails =
+                            new BusinessUserDetails(user);
 
                     if (userDetails.isEnabled()) {
                         UsernamePasswordAuthenticationToken authentication =
@@ -50,14 +59,24 @@ public class JwtRequestFilter extends OncePerRequestFilter {
                                 );
 
                         authentication.setDetails(
-                                new WebAuthenticationDetailsSource().buildDetails(request)
+                                new WebAuthenticationDetailsSource()
+                                        .buildDetails(request)
                         );
 
-                        SecurityContextHolder.getContext().setAuthentication(authentication);
+                        SecurityContextHolder.getContext()
+                                .setAuthentication(authentication);
+
+                        logger.info("Business Service authentication successful.");
+                    } else {
+                        logger.warn("User account is not enabled in Business Service.");
                     }
+
                 } catch (Exception e) {
                     SecurityContextHolder.clearContext();
+                    logger.error("Business Service JWT authentication failed during user lookup.", e);
                 }
+            } else {
+                logger.warn("Business Service rejected JWT validation.");
             }
         }
 
