@@ -14,11 +14,16 @@ import { AdminAuditLogsComponent } from './admin-audit-logs.component';
 import { AdminCreateDoctorComponent } from './admin-create-doctor.component';
 import { MyProfileComponent } from './my-profile.component';
 import { roleGuard } from './auth.guard';
+import { VerifyEmailComponent } from './verify-email.component';
 
 export const routes: Routes = [
   {
     path: 'login',
     component: LoginComponent,
+  },
+  {
+    path: 'verify-email',
+    component: VerifyEmailComponent,
   },
   {
     path: 'profile',

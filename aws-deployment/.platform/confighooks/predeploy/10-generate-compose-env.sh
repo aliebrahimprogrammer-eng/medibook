@@ -26,7 +26,8 @@ keys = [
     "MAIL_HOST",
     "MAIL_PORT",
     "MAIL_USERNAME",
-    "MAIL_PASSWORD"
+    "MAIL_PASSWORD",
+    "FRONTEND_PUBLIC_URL",
 ]
 
 missing = [key for key in keys if key not in properties]

@@ -1,0 +1,36 @@
+
+<div class="verification-page">
+  <div class="verification-card">
+    <div class="brand">
+      <span class="brand-icon">+</span>
+      <span>MediBook</span>
+    </div>
+
+    @if (status === 'loading') {
+    <div class="status-icon loading">⏳</div>
+    <h1>Verifying your email</h1>
+    <p>{{ message }}</p>
+    }
+
+    @if (status === 'success') {
+    <div class="status-icon success">✓</div>
+    <h1>Email verified!</h1>
+    <p>{{ message }}</p>
+    <p>You can now sign in to your MediBook account.</p>
+
+    <a routerLink="/login" class="primary-button">
+      Go to Sign In
+    </a>
+    }
+
+    @if (status === 'error') {
+    <div class="status-icon error">!</div>
+    <h1>Verification failed</h1>
+    <p>{{ message }}</p>
+
+    <a routerLink="/login" class="primary-button">
+      Back to Sign In
+    </a>
+    }
+  </div>
+</div>

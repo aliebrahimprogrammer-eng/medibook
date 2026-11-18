@@ -41,4 +41,11 @@ export class AuthService {
   isAuthenticated(): boolean {
     return !!this.getToken();
   }
+
+  verifyEmail(token: string): Observable<void> {
+    return this.http.get<void>(`${this.apiUrl}/verify-email`, {
+      params: { token },
+    });
+  }
+
 }

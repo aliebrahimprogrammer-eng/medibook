@@ -1,0 +1,111 @@
+
+:host {
+  display: block;
+  min-height: 100vh;
+}
+
+.verification-page {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 24px;
+  background:
+    radial-gradient(circle at 15% 15%, #e4f5f2 0%, transparent 45%),
+    #f7fafc;
+  font-family: Arial, sans-serif;
+}
+
+.verification-card {
+  width: 100%;
+  max-width: 480px;
+  padding: 48px 36px;
+  background: #ffffff;
+  border-radius: 22px;
+  box-shadow: 0 18px 55px rgba(24, 59, 75, 0.09);
+  text-align: center;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 35px;
+  color: #183b4b;
+  font-size: 24px;
+  font-weight: 800;
+}
+
+.brand-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: #087f8c;
+  color: white;
+  font-size: 30px;
+}
+
+.status-icon {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 22px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 50%;
+  font-size: 36px;
+  font-weight: bold;
+}
+
+.status-icon.loading {
+  background: #e7f4f5;
+  color: #087f8c;
+}
+
+.status-icon.success {
+  background: #e5f7ed;
+  color: #16834a;
+}
+
+.status-icon.error {
+  background: #fdecec;
+  color: #c0392b;
+}
+
+h1 {
+  margin: 0 0 16px;
+  color: #183b4b;
+  font-size: 27px;
+}
+
+p {
+  color: #64748b;
+  line-height: 1.7;
+  font-size: 15px;
+}
+
+.primary-button {
+  display: inline-block;
+  margin-top: 25px;
+  padding: 13px 28px;
+  border-radius: 10px;
+  background: #087f8c;
+  color: white;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.2s;
+}
+
+.primary-button:hover {
+  background: #066773;
+}
+
+@media (max-width: 480px) {
+  .verification-card {
+    padding: 36px 22px;
+  }
+}
