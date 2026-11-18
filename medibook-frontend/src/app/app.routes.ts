@@ -17,21 +17,28 @@ import { roleGuard } from './auth.guard';
 import { RegisterComponent } from './register.component';
 import { ForgotPasswordComponent } from './forgot-password.component';
 import { VerifyEmailComponent } from './verify-email.component';
+import { ResetPasswordComponent } from './reset-password.component';
 
 export const routes: Routes = [
   {
     path: 'login',
     component: LoginComponent,
   },
-  path: 'verify-email',
-  component: VerifyEmailComponent,
+  {
+    path: 'verify-email',
+    component: VerifyEmailComponent,
   },
-  path: 'forgot-password',
+  {
+    path: 'forgot-password',
     component: ForgotPasswordComponent,
   },
   {
+    path: 'reset-password',
+    component: ResetPasswordComponent,
+  },
+  {
     path: 'register',
-      component: RegisterComponent,
+    component: RegisterComponent,
   },
   {
     path: 'profile',
