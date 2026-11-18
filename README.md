@@ -373,6 +373,7 @@ MAIL_HOST
 MAIL_PORT
 MAIL_USERNAME
 MAIL_PASSWORD
+app.frontend-base-url
 ```
 
 Some variables apply only to specific services. The Compose file also uses `USER_SERVICE_BASE_URL` for Business Service to reach User Service internally.
