@@ -12,6 +12,31 @@ export interface LoginResponse {
   token: string;
 }
 
+export interface RegisterRequest {
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+  phone?: string;
+}
+
+export interface RegisterResponse {
+  id: number;
+  email: string;
+  role: string;
+  status: string;
+  emailVerified: boolean;
+}
+
+export interface ForgotPasswordRequest {
+  email: string;
+}
+
+export interface ResetPasswordRequest {
+  token: string;
+  newPassword: string;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -30,6 +55,26 @@ export class AuthService {
       );
   }
 
+  register(request: RegisterRequest): Observable<RegisterResponse> {
+    return this.http.post<RegisterResponse>(
+      `${this.apiUrl}/register`,
+      request,
+    );
+  }
+
+  forgotPassword(request: ForgotPasswordRequest): Observable<void> {
+    return this.http.post<void>(
+      `${this.apiUrl}/forgot-password`,
+      request,
+    );
+  }
+
+  resetPassword(request: ResetPasswordRequest): Observable<void> {
+    return this.http.post<void>(
+      `${this.apiUrl}/reset-password`,
+      request,
+    );
+  }
   logout(): void {
     sessionStorage.removeItem('medibook_token');
   }
@@ -47,5 +92,4 @@ export class AuthService {
       params: { token },
     });
   }
-
 }

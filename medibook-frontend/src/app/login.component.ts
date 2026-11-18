@@ -8,6 +8,7 @@ import { PasswordModule } from 'primeng/password';
 
 import { AuthService } from './services/auth.service';
 import { ProfileService, UserRole } from './services/profile.service';
+import { RouterLink } from '@angular/router';
 
 function dashboardPath(role: UserRole): string {
   switch (role) {
@@ -23,7 +24,7 @@ function dashboardPath(role: UserRole): string {
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [FormsModule, InputTextModule, ButtonModule, PasswordModule],
+  imports: [FormsModule, InputTextModule, ButtonModule, PasswordModule, RouterLink],
   templateUrl: './login.component.html',
   styleUrl: './login.component.css',
 })

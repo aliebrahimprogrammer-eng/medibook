@@ -47,8 +47,8 @@ public class AuthService {
     private final AuditLogService auditLogService;
     private final ApplicationEventPublisher eventPublisher;
 
-    @Value("${app.public-base-url:http://localhost:8081}")
-    private String publicBaseUrl;
+    @Value("${app.frontend-base-url:http://localhost:4200}")
+    private String frontendBaseUrl;
 
     @Transactional
     public UserResponse register(RegisterRequest request) {
@@ -84,7 +84,7 @@ public class AuthService {
         emailVerificationTokenRepository.save(verificationToken);
 
         String verificationLink =
-                publicBaseUrl + "/api/auth/verify-email?token="
+                frontendBaseUrl + "/verify-email?token="
                         + verificationToken.getToken();
 
         eventPublisher.publishEvent(new UserEmailNotificationEvent(
@@ -209,7 +209,7 @@ public class AuthService {
         passwordResetTokenRepository.save(resetToken);
 
         String resetLink =
-                publicBaseUrl + "/api/auth/reset-password?token="
+                frontendBaseUrl + "/reset-password?token="
                         + resetToken.getToken();
 
         eventPublisher.publishEvent(new UserEmailNotificationEvent(

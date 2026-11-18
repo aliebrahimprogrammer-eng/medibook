@@ -14,6 +14,8 @@ import { AdminAuditLogsComponent } from './admin-audit-logs.component';
 import { AdminCreateDoctorComponent } from './admin-create-doctor.component';
 import { MyProfileComponent } from './my-profile.component';
 import { roleGuard } from './auth.guard';
+import { RegisterComponent } from './register.component';
+import { ForgotPasswordComponent } from './forgot-password.component';
 import { VerifyEmailComponent } from './verify-email.component';
 
 export const routes: Routes = [
@@ -21,9 +23,15 @@ export const routes: Routes = [
     path: 'login',
     component: LoginComponent,
   },
+  path: 'verify-email',
+  component: VerifyEmailComponent,
+  },
+  path: 'forgot-password',
+    component: ForgotPasswordComponent,
+  },
   {
-    path: 'verify-email',
-    component: VerifyEmailComponent,
+    path: 'register',
+      component: RegisterComponent,
   },
   {
     path: 'profile',

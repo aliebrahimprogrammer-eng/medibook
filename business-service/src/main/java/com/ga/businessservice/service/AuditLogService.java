@@ -41,7 +41,7 @@ public class AuditLogService {
         Page<AuditLog> auditLogs;
 
         if (search == null || search.isBlank()) {
-            auditLogs = auditLogRepository.findAll(pageable);
+            auditLogs = auditLogRepository.findByActorUserIdIsNotNull(pageable);
         } else {
             auditLogs = auditLogRepository.search(search.trim(), pageable);
         }

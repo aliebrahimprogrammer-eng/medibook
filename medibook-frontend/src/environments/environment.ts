@@ -1,4 +1,8 @@
 export const environment = {
   production: true,
-  apiBaseUrl: ''
+  userServiceUrl: '',
+  businessServiceUrl: '',
+  notificationServiceUrl: '',
+  userAuditLogsPath: '/api/user-audit-logs',
+  businessAuditLogsPath: '/api/business-audit-logs'
 };
